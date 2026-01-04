@@ -78,7 +78,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'phone_number', 'role', 'first_name', 'last_name', 
-                  'is_verified', 'fundi_profile')
+                  'is_verified', 'groups', 'fundi_profile')
         read_only_fields = ('phone_number', 'role')
 
     def get_fundi_profile(self, obj):

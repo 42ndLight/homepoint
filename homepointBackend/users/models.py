@@ -1,7 +1,7 @@
 # models.py (update from our previous schema)
 from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser, Group, Permission
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
@@ -71,13 +71,40 @@ def create_profile(sender, instance, created, **kwargs):
         elif instance.role == 'staff':
             StaffProfile.objects.create(user=instance)
 
+@receiver(pre_save, sender=User)
+def _capture_old_role(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            instance._old_role = sender.objects.get(pk=instance.pk).role
+        except sender.DoesNotExist:
+            instance._old_role = None
 
 @receiver(post_save, sender=User)
 def assign_role_group(sender, instance, created, **kwargs):
-    if created:
-        group_name = instance.role.capitalize()  # 'customer' → 'Customer'
-        try:
-            group = Group.objects.get(name=group_name)
-            instance.groups.add(group)
-        except Group.DoesNotExist:
-            pass
+    old_role = getattr(instance, "_old_role", None)
+    if not created and old_role == instance.role:
+        return  # nothing changed
+
+    # Map user role values to the canonical Group names used in the system.
+    # This runs on create and on update so role changes keep group membership in sync.
+    role_to_group = {
+        'staff': 'Warehouse Staff',
+        'admin': 'Warehouse Staff',
+        'fundi': 'Fundi',
+        'customer': 'Customer',
+    }
+
+    group_name = role_to_group.get(instance.role)
+    if not group_name:
+        return
+
+    # Ensure the target group exists and add the user to it.
+    group, _ = Group.objects.get_or_create(name=group_name)
+    if not instance.groups.filter(pk=group.pk).exists():
+        instance.groups.add(group)
+
+    # Remove the user from other role-related groups so membership stays consistent.
+    other_group_names = [n for n in set(role_to_group.values()) if n != group_name]
+    if other_group_names:
+        other_groups = Group.objects.filter(name__in=other_group_names)
+        instance.groups.remove(*other_groups)

@@ -22,4 +22,5 @@ urlpatterns = [
     path('silk/', include('silk.urls', namespace='silk')),
     path('users/', include('users.urls')),
     path('products/', include('products.urls')),
+    path('orders/', include('orders.urls')),
 ]

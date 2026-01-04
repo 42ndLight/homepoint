@@ -17,10 +17,10 @@ class ReadOnlyOrAdmin(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
             return [
-                ReadOnly()
+                AllowAny()
             ]
     
-        return [IsAdminUser() | IsWarehouseStaff()]
+        return [IsAdminUser() or IsWarehouseStaff()]
 
 
 class CategoryViewSet(ReadOnlyOrAdmin):
@@ -70,13 +70,13 @@ class InventoryViewSet(viewsets.ViewSet):
     GET  /api/inventory/<variant_id>/   → public stock quantity
     PATCH /api/inventory/<variant_id>/ → admin only: update stock
     """
+    permission_classes = IsAuthenticated, IsWarehouseStaff
 
     def retrieve(self, request, pk=None):
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)
         serializer = InventorySerializer(variant.inventory)
         return Response(serializer.data)
 
-    @permission_classes([IsAuthenticated, IsWarehouseStaff ])
     def partial_update(self, request, pk=None):
         
         variant = get_object_or_404(Variant, pk=pk)
