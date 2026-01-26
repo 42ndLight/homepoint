@@ -1,0 +1,10 @@
+@import 'tailwindcss';
+@import "tailwindcss-primeui";
+@custom-variant dark (&:where(.home-point-dark, .home-point-dark *));
+
+/* Optional: reset or custom base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}

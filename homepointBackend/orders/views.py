@@ -46,6 +46,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         for item in items_data:
             variant = item['variant']
             qty = item['quantity']
+            tax_type = item['tax_type']
             available = stock_map.get(variant.id, 0)
 
             if available < qty:

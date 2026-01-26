@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
     'silk',
+    'drf_yasg',
     ]
 
 MIDDLEWARE = [

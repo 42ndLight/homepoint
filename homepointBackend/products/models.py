@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)  # e.g., "Pipes", "Boards", "Doors"
@@ -39,6 +40,12 @@ class Variant(models.Model):
         ('sqm', 'Per Square Meter'),  # e.g., boards/tiles
         # Add more as needed, e.g., 'bundle', 'liter'
     ]
+    TAX_CHOICES = [
+        ('A', '16% VAT (Standard)'),
+        ('B', '0% VAT (Zero-rated)'),
+        ('C', 'Exempt'),
+        # Add 'D' for Non-VAT if applicable
+    ]    
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     sku = models.CharField(max_length=50, unique=True)  # Unique identifier, e.g., "PVC-1IN-3M"
@@ -46,6 +53,8 @@ class Variant(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price in KES, includes delivery markup")
     unit_type = models.CharField(max_length=20, choices=UNIT_CHOICES, default='piece')
     stock_threshold = models.PositiveIntegerField(default=10)  # Low-stock alert trigger
+    item_code = models.CharField(max_length=50, help_text="HS Code / eTIMS Item Code")
+    tax_type = models.CharField(max_length=2, choices=TAX_CHOICES, default='A')
 
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
@@ -61,3 +70,22 @@ class Inventory(models.Model):
 
     def is_low_stock(self):
         return self.quantity <= self.variant.stock_threshold
+
+class StockMovement(models.Model):
+    MOVEMENT_TYPES = [
+        ('IN', 'Stock In (Restock)'),
+        ('OUT', 'Stock Out (Sale)'),
+        ('ADJ', 'Adjustment (Damage/Correction)'),
+    ]
+
+    inventory = models.ForeignKey('Inventory', on_delete=models.CASCADE, related_name='movements')
+    variant = models.ForeignKey('Variant', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    
+    change_amount = models.DecimalField(max_digits=10, decimal_places=2) # e.g., +10 or -5
+    movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
+    reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

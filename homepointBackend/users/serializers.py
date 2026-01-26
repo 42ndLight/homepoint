@@ -1,10 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import exceptions
-from django.db.models import Q
 from django.core.validators import RegexValidator 
 User = get_user_model()
 

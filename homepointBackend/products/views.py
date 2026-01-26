@@ -4,9 +4,10 @@ from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
-
+from django.db import transaction
+from django.db.models import F
 from .permissions import IsWarehouseStaff, ReadOnly
-from .models import Category, Product, Variant, Inventory
+from .models import Category, Product, Variant, Inventory, StockMovement
 from .serializers import (
     CategorySerializer, ProductSerializer,
     VariantSerializer, InventorySerializer
@@ -70,7 +71,7 @@ class InventoryViewSet(viewsets.ViewSet):
     GET  /api/inventory/<variant_id>/   → public stock quantity
     PATCH /api/inventory/<variant_id>/ → admin only: update stock
     """
-    permission_classes = IsAuthenticated, IsWarehouseStaff
+    permission_classes = [IsAuthenticated, IsWarehouseStaff]
 
     def retrieve(self, request, pk=None):
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)
@@ -79,13 +80,40 @@ class InventoryViewSet(viewsets.ViewSet):
 
     def partial_update(self, request, pk=None):
         
-        variant = get_object_or_404(Variant, pk=pk)
+        variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)
         inventory = variant.inventory
-        quantity = request.data.get('quantity')
+        serializer = InventorySerializer(variant.inventory, data=request.data, partial=True, context={'request': request})
 
-        if quantity is not None:
-            inventory.quantity = quantity
-            inventory.save()
+        if serializer.is_valid():
+                
+                with transaction.atomic():
+                            change = serializer.validated_data['change_amount']
+                            m_type = serializer.validated_data['movement_type']
 
-        serializer = InventorySerializer(inventory)
+                            if m_type == "IN":
+                                inventory.quantity = F('quantity') + change
+                            else:
+                                inventory.quantity = F('quantity') - change
+                            
+                            inventory.save()
+                            
+                            # 4. Create the Log
+                            StockMovement.objects.create(
+                                inventory=inventory,
+                                variant=variant,
+                                user=request.user,
+                                change_amount=change,
+                                movement_type=m_type,
+                                reason=request.data.get('reason', '')
+                            )
+
+                        # Refresh from DB to get the new calculated quantity for the response
+                            inventory.refresh_from_db()
+
+                serializer = InventorySerializer(inventory)
+                return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+        
+        
+        
         return Response(serializer.data)
