@@ -1,19 +1,21 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
+  <div class="min-h-screen flex items-center justify-center bg-gray-100
+      
+      bg-[url('/src/assests/img/Untitled.jpeg')]">    
     <Card class="w-full max-w-md p-6 shadow-lg">
       <template #header>
-        <h2 class="text-2xl font-bold text-center">Hardware Store POS</h2>
-
+        <h2 class="text-2xl font-bold text-center">Hardware Store POS</h2></template>
+          <template #subtitle>
         <p class="text-center text-gray-500 mt-1">Sign in to continue</p>
+              </template>
 
-        <h1>Ken</h1>
-
+        <template #content>
         <div class="mt-6 space-y-5">
         <div>
           <label class="block text-sm font-medium mb-1">Username</label>
-          <InputText 
-            v-model="username" 
-            class="w-full" 
+          <InputText
+            v-model="username"
+            fluid
             placeholder="staff username"
             @keyup.enter="handleLogin"
           />
@@ -21,10 +23,10 @@
 
         <div>
           <label class="block text-sm font-medium mb-1">Password</label>
-          <Password 
-            v-model="password" 
-            class="w-full" 
-            toggleMask 
+          <Password
+            v-model="password"
+            fluid
+            toggleMask
             placeholder="••••••••"
             @keyup.enter="handleLogin"
           />
@@ -33,22 +35,28 @@
          <Message v-if="errorMessage" severity="error" :closable="false" class="mb-2">
           {{ errorMessage }}
         </Message>
+        </div>
+      </template>
+
+
+      <template #footer>
 
         <Button label="Login" class="w-full" :loading="loading" @click="handleLogin" />
 
 
-      </div>
-
       </template>
 
-         
-      
+
+
+
+
     </Card>
   </div>
 </template>
 
 <script setup>
 import Card from 'primevue/card'
+import Image from 'primevue/image'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
@@ -96,7 +104,7 @@ const handleLogin = async () => {
             'Authorization': `Bearer ${tempToken}`,
           },
         })
-        
+
         let userData = null
         if (profileResponse.ok) {
           userData = await profileResponse.json()
@@ -104,7 +112,7 @@ const handleLogin = async () => {
 
         // Login with tokens and user data
         await auth.login(data.access, data.refresh, userData)
-        
+
         // Redirect based on role
         const role = userData?.role || (auth.user?.role)
         if (role === 'admin' || auth.isAdmin) {

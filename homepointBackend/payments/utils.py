@@ -1,0 +1,84 @@
+# mpesa_utils.py
+
+import logging
+import requests
+from django.conf import settings
+from django.core.cache import cache
+from requests.auth import HTTPBasicAuth
+
+logger = logging.getLogger(__name__)
+
+def get_mpesa_access_token():
+    cache_key = "mpesa:access_token"  # or add :sandbox/:prod if you switch environments
+
+    token = cache.get(cache_key)
+    if token:
+        logger.debug("Returning cached M-Pesa access token")
+        return token
+
+    consumer_key = settings.MPESA_CONSUMER_KEY
+    consumer_secret = settings.MPESA_CONSUMER_SECRET
+    base_url = getattr(settings, 'MPESA_BASE_URL', 'https://sandbox.safaricom.co.ke')
+    api_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
+
+    try:
+        
+        auth = HTTPBasicAuth(consumer_key, consumer_secret)
+        response = requests.get(api_url, auth=auth, timeout=10)
+
+        response.raise_for_status()
+
+        data = response.json()
+        access_token = data.get("access_token")
+        expires_in = data.get("expires_in", 3600)
+
+        if not access_token:
+            logger.error(f"M-Pesa token response missing 'access_token': {data}")
+            raise ValueError("No access_token in Safaricom response")
+
+        # Cache with buffer (e.g., refresh 5 min early)
+        cache_timeout = int(expires_in) - 300
+        cache.set(cache_key, access_token, timeout=cache_timeout)
+
+        logger.info(f"M-Pesa access token obtained and cached (expires in ~{expires_in}s)")
+        return access_token
+
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"M-Pesa Auth HTTP error: {http_err} | Response: {response.text}")
+        raise Exception(f"Safaricom returned {response.status_code}: {response.text}") from http_err
+
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"M-Pesa connection/request failed: {req_err}")
+        raise Exception("Failed to reach Safaricom OAuth server") from req_err
+
+    except Exception as e:
+        logger.exception("Unexpected error in M-Pesa token generation")
+        raise
+
+
+def register_mpesa_urls():
+    access_token = get_mpesa_access_token()
+
+    ngrok_url = getattr(settings, 'NGROK_URL', None)
+    confirmation_url = f"{ngrok_url}/payments/confirmation/"
+    validation_url = f"{ngrok_url}/payments/validation/"
+
+    shortcode = '600996'    
+
+    api_url = "https://sandbox.safaricom.co.ke/mpesa/c2b/v2/registerurl"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "ShortCode": shortcode,  # e.g., "174379"
+        "ResponseType": "Completed",
+        "ConfirmationURL": confirmation_url,  # e.g., "https://abc123.ngrok.io/api/mpesa/confirmation/"
+        "ValidationURL": validation_url  # e.g., "https://abc123.ngrok.io/api/mpesa/validation/"
+    }
+    response = requests.post(api_url, json=payload, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Registration failed: {response.text}")

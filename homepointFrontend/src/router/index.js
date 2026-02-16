@@ -11,10 +11,18 @@ const router = createRouter({
       beforeEnter: guestOnly,
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/views/auth/RegisterView.vue'),
+      // Only admins should be able to register new staff accounts
+      // beforeEnter: requireRole(['admin']),
+      meta: { title: 'Register Staff' },
+    },
+    {
       path: '/pos',
       name: 'pos',
       component: () => import('@/views/pos/POSView.vue'),
-      beforeEnter: requireRole(['staff', 'cashier', 'admin']),
+      beforeEnter: requireRole(['staff', 'admin']),
       meta: { title: 'Point of Sale' },
     },
     {

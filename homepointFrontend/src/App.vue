@@ -4,12 +4,41 @@ import { useAuthStore } from '@/stores/auth'
 import Menubar from 'primevue/menubar'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
-import { computed } from 'vue'
+import { computed, watch, onMounted } from 'vue'
+import { useSync } from '@/composables/useSync'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToast()
+const {
+  isOnline,
+  isSyncing,
+  lastSyncTime,
+  lastError,
+  syncNow,
+  startPeriodicSync,
+  stopPeriodicSync,
+} = useSync()
+
+// Start background sync when authenticated; stop on logout
+watch(
+  () => authStore.isAuthenticated,
+  (authenticated) => {
+    if (authenticated) {
+      startPeriodicSync()
+    } else {
+      stopPeriodicSync()
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    startPeriodicSync()
+  }
+})
 
 const handleLogout = async () => {
   try {
@@ -47,29 +76,48 @@ const menuItems = computed(() => {
   return items.filter(item => !item.visible || item.visible())
 })
 
-const userMenuItems = [
-  {
-    label: authStore.user?.username || 'User',
-    items: [
-      {
-        label: 'Profile',
-        icon: 'pi pi-user',
-        command: () => {
-          // TODO: Navigate to profile page
-          toast.add({ severity: 'info', summary: 'Coming soon', detail: 'Profile page coming soon', life: 3000 })
+// User menu (top-right), only show registration entry for admins
+const userMenuItems = computed(() => {
+  const items = [
+    {
+      label: authStore.user?.username || 'User',
+      items: [
+        {
+          label: 'Profile',
+          icon: 'pi pi-user',
+          command: () => {
+            // TODO: Navigate to profile page
+            toast.add({ severity: 'info', summary: 'Coming soon', detail: 'Profile page coming soon', life: 3000 })
+          },
         },
-      },
-      {
-        separator: true,
-      },
-      {
-        label: 'Logout',
-        icon: 'pi pi-sign-out',
-        command: handleLogout,
-      },
-    ],
-  },
-]
+        // Admin-only registration link
+        ...(authStore.isAdmin
+          ? [
+              {
+                label: 'Register Staff',
+                icon: 'pi pi-user-plus',
+                command: () => router.push('/register'),
+              },
+              {
+                separator: true,
+              },
+            ]
+          : [
+              {
+                separator: true,
+              },
+            ]),
+        {
+          label: 'Logout',
+          icon: 'pi pi-sign-out',
+          command: handleLogout,
+        },
+      ],
+    },
+  ]
+
+  return items
+})
 </script>
 
 <template>
@@ -77,6 +125,15 @@ const userMenuItems = [
     <!-- Navigation Bar -->
     <Menubar v-if="authStore.isAuthenticated && route.name !== 'login'" :model="menuItems" class="mb-4">
       <template #end>
+        <div v-if="authStore.isAuthenticated" class="flex items-center gap-2 mr-3 text-sm" title="Sync status">
+          <span class="flex items-center gap-1.5 px-2 py-1 rounded-full" :class="isOnline ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'">
+            <i :class="['pi text-xs', isOnline ? 'pi-wifi' : 'pi-wifi-off']" />
+            {{ isOnline ? 'Online' : 'Offline' }}
+          </span>
+          <span v-if="isSyncing" class="flex items-center gap-1 text-amber-600"><i class="pi pi-spin pi-spinner text-xs" /> Syncing…</span>
+          <span v-else-if="lastSyncTime" class="text-gray-500" :title="'Last sync: ' + lastSyncTime">Synced</span>
+          <span v-else-if="lastError" class="text-red-600 cursor-pointer" :title="lastError" @click="syncNow()">Error</span>
+        </div>
         <Menubar :model="userMenuItems" />
       </template>
     </Menubar>

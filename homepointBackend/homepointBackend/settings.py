@@ -33,9 +33,12 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG")
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS","127.0.0.1").split(",")
-
+NGROK_URL = os.getenv('NGROK_URL')
 
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
+
+MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY')
+MPESA_CONSUMER_SECRET = os.getenv('MPESA_CONSUMER_SECRET')
 
 # Application definition
 
