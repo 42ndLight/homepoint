@@ -39,6 +39,8 @@ CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
 
 MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY')
 MPESA_CONSUMER_SECRET = os.getenv('MPESA_CONSUMER_SECRET')
+MPESA_BASE_URL = os.getenv('MPESA_BASE_URL')
+MPESA_SHORTCODE = os.getenv('MPESA_SHORTCODE')
 
 # Application definition
 

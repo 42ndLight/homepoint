@@ -32,16 +32,25 @@ class MpesaCheckoutSerializer(serializers.ModelSerializer):
     Input serializer to initiate STK Push
     Used by frontend → POST to trigger payment
     """
-    phone_number = serializers.CharField(max_length=15, required=True)
     order_id = serializers.PrimaryKeyRelatedField(
         queryset=Order.objects.filter(status='pending'),
         write_only=True,
         source='order'
     )
+    order_total_amount = serializers.DecimalField(
+        source='order.total_amount',
+        max_digits=10,
+        decimal_places=2,
+        read_only=True
+    )
+    phone_number = serializers.CharField(max_length=15, required=True)
+    transaction_type = serializers.ChoiceField(choices=Transaction.TYPE_CHOICES, write_only=True)    
+    reference_id = serializers.CharField(max_length=100, required=False, write_only=True)
+    
 
     class Meta:
         model = MpesaTransaction
-        fields = ['phone_number', 'order_id']
+        fields = ['phone_number', 'order_id', 'order_total_amount', 'transaction_type', 'reference_id']
 
     def validate(self, data):
         order = data['order']

@@ -122,6 +122,76 @@ export const getProducts = async () => {
   }
 }
 
+
+/**
+ * Get flat, sellable variant rows — one row per variant.
+ * Used by: POSView
+ *
+ * Each row is self-contained: has the parent product name, price,
+ * stock quantity, and everything PosItemCard needs.
+ */
+export const getSellableItems = async () => {
+  try {
+    const [variants, inventory, products] = await Promise.all([
+      db.variants.toArray(),
+      db.inventory.toArray(),
+      db.products.toArray(),
+    ])
+
+    const productMap  = new Map(products.map(p => [p.id, p]))
+    const inventoryMap = new Map(inventory.map(i => [i.variant_id, i]))
+
+    return variants.map(variant => {
+      const parent = productMap.get(variant.product_id)
+      if (!parent) return null // orphan variant — should not happen
+
+      const inv = inventoryMap.get(variant.id) ?? { quantity: 0, is_low_stock: false }
+
+      // Build a human-readable display name, e.g. "Steel Pipe • 6m"
+      const attrSuffix = Object.values(variant.attributes ?? {}).join(' • ')
+      const displayName = attrSuffix
+        ? `${parent.name} • ${attrSuffix}`
+        : parent.name
+
+      return {
+        // Identity
+        id: variant.id,
+        product_id: variant.product_id,
+        sku: variant.sku,
+        item_code: variant.item_code ?? variant.sku,
+
+        // Display
+        name: parent.name,
+        display_name: displayName.trim(),
+        image: parent.image ?? null,
+
+        // Pricing
+        price: parseFloat(variant.price ?? 0),
+
+        // Unit info
+        unit_type: variant.unit_type ?? 'piece',
+        unit_type_display: variant.unit_type_display ?? 'Per Piece',
+
+        // Attributes (size, colour, etc.)
+        attributes: variant.attributes ?? {},
+
+        // Stock
+        stock_quantity: inv.quantity ?? 0,
+        is_low_stock: inv.is_low_stock ?? (inv.quantity <= (variant.stock_threshold ?? 10)),
+        stock_threshold: variant.stock_threshold ?? 10,
+
+        // Tax
+        tax_type: variant.tax_type ?? 'A',
+      }
+    }).filter(Boolean)
+  } catch (error) {
+    console.error('getSellableItems failed:', error)
+    throw error
+  }
+}
+
+
+
 /**
  * Search products locally using Dexie
  */

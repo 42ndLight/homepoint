@@ -2,9 +2,10 @@
 from rest_framework import generics, status
 from django.db import transaction
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from .utils import get_mpesa_access_token, register_mpesa_urls
+from .utils import get_mpesa_access_token
 from products.permissions import IsWarehouseStaff
 from rest_framework.response import Response
 from .serializers import (
@@ -26,31 +27,7 @@ class TransactionHistoryListView(generics.ListAPIView):
         if self.request.user.is_staff:
             return Transaction.objects.all()
         return Transaction.objects.filter(user=self.request.user)
-
-
-class MpesaCheckoutCreateView(APIView):
-    
-    permission_classes = [AllowAny]
-
-           
-
-    def post(self, request):
-        #mpesa_tx = serializer.save(status='PENDING')
-        # Here: call daraja STK push service
-        # Example: result = initiate_stk_push(mpesa_tx)
-        # Then update checkout_request_id etc.
-        # If fails → raise ValidationError
-        
-        response = register_mpesa_urls()
-        if response.status_code == 200:
-            return Response({"message": response.json()}, status=status.HTTP_200_OK)
-        else:
-            return Response({"error": "Failed to register M-Pesa URLs.", "details": response.text}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        
-        
-
-        
+         
 
 
 class CashTransactionCreateView(generics.ListCreateAPIView):
@@ -58,8 +35,6 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsWarehouseStaff]
 
     queryset = CashTransaction.objects.all()
-
-
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -96,58 +71,48 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
             order.status = 'paid'
             order.save(update_fields=['status'])
 
-class MpesaAuthView(APIView):
 
-    def get(self, request):
-        try:
-            access_token = get_mpesa_access_token()
-            return Response({"access_token": access_token}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
+@api_view(['POST'])
 def mpesa_confirmation_url(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            # Extract key fields for HomePoint processing
-            '''transaction_id = data.get('TransID')
-            amount = data.get('TransAmount')
-            bill_ref = data.get('BillRefNumber')  # Use this for order ID or customer ref
-            phone = data.get('MSISDN')  # Hashed phone number
-            first_name = data.get('FirstName')'''
-            # TODO: Integrate with your models
-            # e.g., Order.objects.filter(id=bill_ref).update(paid=True, payment_method='M-Pesa')
-            # Or save to a Transaction model for inventory tracking
-            # from .models import Transaction
-            # Transaction.objects.create(
-            #     transaction_id=transaction_id,
-            #     amount=amount,
-            #     bill_ref=bill_ref,
-            #     phone=phone,
-            #     first_name=first_name
-            # )
-            print("M-Pesa Confirmation:", data)  # Log for dev; replace with logging
-            return JsonResponse({
-                "ResultCode": 0,
-                "ResultDesc": "Success"
-            })
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    if request.method != 'POST':
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    # Log headers and raw body for debugging (replace print with logging in production)
+    raw = request.body.decode('utf-8', errors='replace') if request.body else ''
+    print("M-Pesa Confirmation headers:", dict(request.headers))
+    print("M-Pesa Confirmation raw body:", raw)
+
+    # Try to parse JSON, fallback to form data or raw string
+    try:
+        data = json.loads(raw)
+    except Exception:
+        data = request.POST.dict() if request.POST else raw
+
+    # MPesa often nests payload under Body / stkCallback etc. Normalize for easier inspection.
+    payload = data.get('Body', data) if isinstance(data, dict) else data
+    print("M-Pesa Confirmation parsed payload:", payload)
+
+    # to do: integrate with models (use transaction_id / BillRefNumber etc.)
+    return JsonResponse({"ResultCode": 0, "ResultDesc": "Success"})
+    # return JsonResponse({
+    #     "ResultCode": 0,
+    #     "ResultDesc": "Success"
+    # })
 
 @csrf_exempt
+@api_view(['POST'])
 def mpesa_validation(request):
-    if request.method == 'POST':
-        # Optional: Add logic to validate (e.g., check if account exists)
-        # For MVP, always accept
+    if request.method == 'POST':        
         return JsonResponse({
             "ResultCode": 0,
             "ResultDesc": "Accepted"
         })
     return JsonResponse({"error": "Invalid request"}, status=400)
 
-    
 
 
-    
+
+
+

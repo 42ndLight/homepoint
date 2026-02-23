@@ -10,6 +10,7 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   css: ['./app/assets/css/main.css'],
+  base: '/',
   optimizeDeps: {
     include: ['quagga'],
   },

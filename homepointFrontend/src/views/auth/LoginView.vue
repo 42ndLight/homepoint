@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100
       
-      bg-[url('/src/assests/img/Untitled.jpeg')]">    
+      bg-[url('/src/assests/img/gen_image.png')]">    
     <Card class="w-full max-w-md p-6 shadow-lg">
       <template #header>
         <h2 class="text-2xl font-bold text-center">Hardware Store POS</h2></template>

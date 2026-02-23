@@ -71,7 +71,7 @@ class InventoryViewSet(viewsets.ViewSet):
     GET  /api/inventory/<variant_id>/   → public stock quantity
     PATCH /api/inventory/<variant_id>/ → admin only: update stock
     """
-    permission_classes = [IsAuthenticated, IsWarehouseStaff]
+    permission_classes = [IsAuthenticated]
 
     def retrieve(self, request, pk=None):
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)

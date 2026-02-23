@@ -18,7 +18,7 @@ def get_mpesa_access_token():
 
     consumer_key = settings.MPESA_CONSUMER_KEY
     consumer_secret = settings.MPESA_CONSUMER_SECRET
-    base_url = getattr(settings, 'MPESA_BASE_URL', 'https://sandbox.safaricom.co.ke')
+    base_url = settings.MPESA_BASE_URL
     api_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
 
     try:
@@ -56,29 +56,5 @@ def get_mpesa_access_token():
         raise
 
 
-def register_mpesa_urls():
-    access_token = get_mpesa_access_token()
 
-    ngrok_url = getattr(settings, 'NGROK_URL', None)
-    confirmation_url = f"{ngrok_url}/payments/confirmation/"
-    validation_url = f"{ngrok_url}/payments/validation/"
 
-    shortcode = '600996'    
-
-    api_url = "https://sandbox.safaricom.co.ke/mpesa/c2b/v2/registerurl"
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "ShortCode": shortcode,  # e.g., "174379"
-        "ResponseType": "Completed",
-        "ConfirmationURL": confirmation_url,  # e.g., "https://abc123.ngrok.io/api/mpesa/confirmation/"
-        "ValidationURL": validation_url  # e.g., "https://abc123.ngrok.io/api/mpesa/validation/"
-    }
-    response = requests.post(api_url, json=payload, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Registration failed: {response.text}")
