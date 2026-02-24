@@ -50,7 +50,7 @@ const quantity = ref(Number.parseFloat(props.item.quantity) || 1)
 
 watch(() => props.item.quantity, (val) => {
   const q = Number.parseFloat(val)
-  if (!isNaN(q) && q !== quantity.value) {
+  if (!Number.isNaN(q) && q !== quantity.value) {
     quantity.value = q
   }
 })

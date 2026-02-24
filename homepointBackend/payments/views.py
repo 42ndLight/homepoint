@@ -44,9 +44,9 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
         order = data.get('order')
         user = self.request.user
 
-        if t_type == 'SALES':
-            if amount < order.total_amount:
-                raise serializers.ValidationError("Amount must cover the order total.")
+        if t_type == 'SALES' and amount < order.total_amount:
+
+            raise serializers.ValidationError("Amount must cover the order total.")
 
               # Create main transaction record
         tx = Transaction.objects.create(
@@ -96,10 +96,6 @@ def mpesa_confirmation_url(request):
 
     # to do: integrate with models (use transaction_id / BillRefNumber etc.)
     return JsonResponse({"ResultCode": 0, "ResultDesc": "Success"})
-    # return JsonResponse({
-    #     "ResultCode": 0,
-    #     "ResultDesc": "Success"
-    # })
 
 @csrf_exempt
 @api_view(['POST'])

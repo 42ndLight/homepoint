@@ -56,7 +56,7 @@ export const useProductSearch = () => {
 
   // Escape special regex characters
   const escapeRegex = (string) => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return string.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
 
   // Highlight matching text

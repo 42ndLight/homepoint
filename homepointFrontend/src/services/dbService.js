@@ -51,10 +51,10 @@ export const syncProducts = async () => {
           product_id:       prod.id,
           sku:              v.sku,
           item_code:        v.item_code ?? v.sku,
-          price:            parseFloat(v.price ?? 0),
+          price:            Number.parseFloat(v.price ?? 0),
 
           // Staff-only fields — null when stripped by backend
-          cost_price:       v.cost_price      != null ? parseFloat(v.cost_price) : null,
+          cost_price:       v.cost_price      != null ? Number.parseFloat(v.cost_price) : null,
           stock_quantity:   v.stock_quantity   ?? null,
           stock_threshold:  v.stock_threshold  ?? null,
 
