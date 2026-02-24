@@ -71,8 +71,8 @@ defineEmits(['add-to-cart'])
 // ---------------------------------------------------------------------------
 
 const formatPrice = (price) => {
-  if (price == null || isNaN(price)) return '0.00'
-  return parseFloat(price).toLocaleString('en-KE', {
+  if (price == null || Number.isNaN(price)) return '0.00'
+  return Number.parseFloat(price).toLocaleString('en-KE', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
@@ -80,12 +80,12 @@ const formatPrice = (price) => {
 
 const minPrice = computed(() => {
   if (!props.product.variants?.length) return props.product.base_price
-  return Math.min(...props.product.variants.map(v => parseFloat(v.price ?? 0)))
+  return Math.min(...props.product.variants.map(v => Number.parseFloat(v.price ?? 0)))
 })
 
 const maxPrice = computed(() => {
   if (!props.product.variants?.length) return props.product.base_price
-  return Math.max(...props.product.variants.map(v => parseFloat(v.price ?? 0)))
+  return Math.max(...props.product.variants.map(v => Number.parseFloat(v.price ?? 0)))
 })
 
 // ---------------------------------------------------------------------------

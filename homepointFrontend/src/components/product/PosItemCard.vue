@@ -98,7 +98,7 @@ const props = defineProps({
 const emit = defineEmits(['add-to-cart'])
 
 const formatPrice = (price) => {
-  if (typeof price !== 'number' || isNaN(price)) return '0'
+  if (typeof price !== 'number' || Number.isNaN(price)) return '0'
   return price.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 

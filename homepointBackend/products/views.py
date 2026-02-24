@@ -118,7 +118,6 @@ class InventoryViewSet(viewsets.ViewSet):
 
                 serializer = InventorySerializer(inventory)
                 return Response(serializer.data)
-        return Response(serializer.errors, status=400)
         
         
         

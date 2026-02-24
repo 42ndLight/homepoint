@@ -1,6 +1,6 @@
 <template>
   <div class="mb-4">
-    <label class="block text-sm font-medium mb-2">Filter by Category</label>
+    <label class="block text-sm font-medium mb-2">Filter by Category
     <Select
       v-model="selectedCategory"
       :options="categoryOptions"
@@ -8,7 +8,7 @@
       optionValue="value"
       placeholder="All Categories"
       class="w-full md:w-14rem"
-    />
+    /></label>
   </div>
 </template>
 

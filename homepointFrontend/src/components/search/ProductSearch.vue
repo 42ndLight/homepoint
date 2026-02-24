@@ -105,14 +105,14 @@ const handleSelectProduct = (product) => {
 
 const formatPrice = (price) => {
   if (!price) return '0.00'
-  return parseFloat(price).toFixed(2)
+  return Number.parseFloat(price).toFixed(2)
 }
 
 const getMinPrice = (product) => {
   if (!product.variants || product.variants.length === 0) {
     return product.base_price
   }
-  return Math.min(...product.variants.map(v => parseFloat(v.price)))
+  return Math.min(...product.variants.map(v => Number.parseFloat(v.price)))
 }
 
 onMounted(() => {

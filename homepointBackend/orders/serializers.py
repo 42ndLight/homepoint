@@ -36,7 +36,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
     def get_net_amount(self, obj):
         # Using the logic: Net = Total / 1.16
         rate = Decimal('0.16') if obj.variant.tax_type == 'A' else Decimal('0.00')
-        net_unit_price = obj.price_at_purchase / (1 + rate)
+        if rate == 0:
+            return Decimal('0.00')
+        else:
+            net_unit_price = obj.price_at_purchase / (1 + rate)
         return round(net_unit_price * obj.quantity, 2)
 
     # 2. Calculate VAT Amount

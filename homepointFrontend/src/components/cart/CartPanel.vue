@@ -64,6 +64,6 @@ const cartStore = useCartStore()
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0.00'
-  return parseFloat(price).toFixed(2)
+  return Number.parseFloat(price).toFixed(2)
 }
 </script>

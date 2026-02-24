@@ -34,15 +34,15 @@ export const useCartStore = defineStore('cart', () => {
   const itemCount = computed(() => {
     // Total items - sum of all quantities (supports decimal units like meters, kg)
     return items.value.reduce((sum, item) => {
-      return sum + parseFloat(item.quantity || 0)
+      return sum + Number.parseFloat(item.quantity || 0)
     }, 0)
   })
 
   const subtotal = computed(() => {
     // Sum of (price × quantity) for all items
     const sum = items.value.reduce((sum, item) => {
-      const price = parseFloat(item.price || 0)
-      const quantity = parseFloat(item.quantity || 0)
+      const price = Number.parseFloat(item.price || 0)
+      const quantity = Number.parseFloat(item.quantity || 0)
       return sum + (price * quantity)
     }, 0)
     return roundCurrency(sum)
@@ -65,8 +65,8 @@ export const useCartStore = defineStore('cart', () => {
       return
     }
 
-    const qty = parseFloat(quantity)
-    if (isNaN(qty) || qty <= 0) {
+    const qty = Number.parseFloat(quantity)
+    if (Number.isNaN(qty) || qty <= 0) {
       console.error('Invalid quantity provided to addItem')
       return
     }
@@ -75,7 +75,7 @@ export const useCartStore = defineStore('cart', () => {
 
     if (existingIndex >= 0) {
       // Update quantity - supports decimal units (meters, kg, etc.)
-      const currentQty = parseFloat(items.value[existingIndex].quantity || 0)
+      const currentQty = Number.parseFloat(items.value[existingIndex].quantity || 0)
       items.value[existingIndex].quantity = currentQty + qty
     } else {
       // Add new item
@@ -84,7 +84,7 @@ export const useCartStore = defineStore('cart', () => {
         product_id: variant.product_id || variant.product?.id,
         sku: variant.sku,
         name: variant.name || variant.product?.name || variant.sku,
-        price: parseFloat(variant.price),
+        price: Number.parseFloat(variant.price),
         quantity: qty,
         unit_type: variant.unit_type || 'piece',
         attributes: variant.attributes || {},
@@ -105,8 +105,8 @@ export const useCartStore = defineStore('cart', () => {
   const updateQuantity = (variantId, quantity) => {
     const item = items.value.find(item => item.variant_id === variantId)
     if (item) {
-      const qty = parseFloat(quantity)
-      if (isNaN(qty) || qty <= 0) {
+      const qty = Number.parseFloat(quantity)
+      if (Number.isNaN(qty) || qty <= 0) {
         // Remove item if quantity is 0 or invalid
         removeItem(variantId)
       } else {

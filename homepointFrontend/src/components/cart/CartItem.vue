@@ -46,30 +46,30 @@ const props = defineProps({
 
 const emit = defineEmits(['remove', 'update-quantity'])
 
-const quantity = ref(parseFloat(props.item.quantity) || 1)
+const quantity = ref(Number.parseFloat(props.item.quantity) || 1)
 
 watch(() => props.item.quantity, (val) => {
-  const q = parseFloat(val)
+  const q = Number.parseFloat(val)
   if (!isNaN(q) && q !== quantity.value) {
     quantity.value = q
   }
 })
 
 const lineTotal = computed(() => {
-  const price = parseFloat(props.item.price || 0)
-  const qty = parseFloat(quantity.value || 0)
+  const price = Number.parseFloat(props.item.price || 0)
+  const qty = Number.parseFloat(quantity.value || 0)
   return Math.round(price * qty * 100) / 100
 })
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0.00'
-  return parseFloat(price).toFixed(2)
+  return Number.parseFloat(price).toFixed(2)
 }
 
 const handleQuantityChange = (value) => {
   if (value != null && value > 0) {
-    const qty = typeof value === 'number' ? value : parseFloat(value)
-    if (!isNaN(qty)) {
+    const qty = typeof value === 'number' ? value : Number.parseFloat(value)
+    if (!Number.isNaN(qty)) {
       quantity.value = qty
       emit('update-quantity', qty)
     }

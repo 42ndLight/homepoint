@@ -4,24 +4,24 @@
     <template #content>
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <p class="text-gray-900">{{ authStore.user.username }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Username
+          <p class="text-gray-900">{{ authStore.user.username }}</p></label>
         </div>
         <div v-if="authStore.user.email">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <p class="text-gray-900">{{ authStore.user.email }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email
+          <p class="text-gray-900">{{ authStore.user.email }}</p></label>
         </div>
         <div v-if="authStore.user.phone_number">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-          <p class="text-gray-900">{{ authStore.user.phone_number }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number
+          <p class="text-gray-900">{{ authStore.user.phone_number }}</p></label>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <p class="text-gray-900 capitalize">{{ authStore.user.role }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Role
+          <p class="text-gray-900 capitalize">{{ authStore.user.role }}</p></label>
         </div>
         <div v-if="authStore.user.first_name || authStore.user.last_name">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-          <p class="text-gray-900">{{ `${authStore.user.first_name || ''} ${authStore.user.last_name || ''}`.trim() }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Name
+          <p class="text-gray-900">{{ `${authStore.user.first_name || ''} ${authStore.user.last_name || ''}`.trim() }}</p></label>
         </div>
       </div>
     </template>

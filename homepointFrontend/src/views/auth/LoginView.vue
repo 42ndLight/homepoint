@@ -12,24 +12,24 @@
         <template #content>
         <div class="mt-6 space-y-5">
         <div>
-          <label class="block text-sm font-medium mb-1">Username</label>
+          <label class="block text-sm font-medium mb-1">Username
           <InputText
             v-model="username"
             fluid
             placeholder="staff username"
             @keyup.enter="handleLogin"
-          />
+          /></label>
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-1">Password</label>
+          <label class="block text-sm font-medium mb-1">Password
           <Password
             v-model="password"
             fluid
             toggleMask
             placeholder="••••••••"
             @keyup.enter="handleLogin"
-          />
+          /></label>
         </div>
 
          <Message v-if="errorMessage" severity="error" :closable="false" class="mb-2">
