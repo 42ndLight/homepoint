@@ -10,18 +10,21 @@ from .permissions import IsWarehouseStaff, ReadOnly
 from .models import Category, Product, Variant, Inventory, StockMovement
 from .serializers import (
     CategorySerializer, ProductSerializer,
-    VariantSerializer, InventorySerializer
+    VariantSerializer, InventorySerializer, get_user_role
 )
 
 # Custom permission: Read-only for everyone, full CRUD for admins
 class ReadOnlyOrAdmin(viewsets.ModelViewSet):
     def get_permissions(self):
-        if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
-            return [
-                AllowAny()
-            ]
-    
-        return [IsAdminUser() or IsWarehouseStaff()]
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated()]
+        # Fix: use class references, not instances, for | operator
+        return [IsAdminUser | IsWarehouseStaff()]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['role'] = get_user_role(self.request)   # inject role for field stripping
+        return context
 
 
 class CategoryViewSet(ReadOnlyOrAdmin):
@@ -71,7 +74,10 @@ class InventoryViewSet(viewsets.ViewSet):
     GET  /api/inventory/<variant_id>/   → public stock quantity
     PATCH /api/inventory/<variant_id>/ → admin only: update stock
     """
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated()]
+        return [IsAdminUser | IsWarehouseStaff()]
 
     def retrieve(self, request, pk=None):
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)

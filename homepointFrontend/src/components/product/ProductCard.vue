@@ -6,45 +6,48 @@
         <img v-else :src="product.image" :alt="product.name" class="w-full h-full object-cover" />
       </div>
     </template>
+
     <template #title>
       <div class="text-lg font-semibold">{{ product.name }}</div>
     </template>
+
     <template #subtitle>
       <Tag :value="product.category?.name || 'Uncategorized'" severity="info" />
     </template>
+
     <template #content>
       <div class="space-y-2">
         <p class="text-sm text-gray-600 line-clamp-2">{{ product.description }}</p>
-        
-        <!-- Price Range -->
-        <div v-if="product.variants && product.variants.length > 0">
+
+        <!-- Price range across variants, or base_price fallback -->
+        <div v-if="product.variants?.length">
           <div class="text-sm text-gray-500">Price Range:</div>
           <div class="text-lg font-bold text-primary">
-            KES {{ formatPrice(getMinPrice()) }} - KES {{ formatPrice(getMaxPrice()) }}
+            <template v-if="minPrice === maxPrice">
+              KES {{ formatPrice(minPrice) }}
+            </template>
+            <template v-else>
+              KES {{ formatPrice(minPrice) }} – KES {{ formatPrice(maxPrice) }}
+            </template>
           </div>
         </div>
         <div v-else class="text-lg font-bold text-primary">
           KES {{ formatPrice(product.base_price) }}
         </div>
 
-        <!-- Stock Status -->
-        <div v-if="hasLowStock()" class="mt-2">
-          <Tag value="Low Stock" severity="warn" />
-        </div>
-        <div v-else-if="hasInStock()" class="mt-2">
-          <Tag value="In Stock" severity="success" />
-        </div>
-        <div v-else class="mt-2">
-          <Tag value="Out of Stock" severity="danger" />
+        <!-- Stock status — reads stock_status label (always present) -->
+        <div class="mt-2">
+          <Tag :value="stockTag.label" :severity="stockTag.severity" />
         </div>
       </div>
     </template>
+
     <template #footer>
-      <Button 
-        label="Add to Cart" 
-        icon="pi pi-shopping-cart" 
+      <Button
+        label="Add to Cart"
+        icon="pi pi-shopping-cart"
         class="w-full"
-        :disabled="!hasInStock()"
+        :disabled="overallStockStatus === 'out_of_stock'"
         @click="$emit('add-to-cart', product)"
       />
     </template>
@@ -52,59 +55,82 @@
 </template>
 
 <script setup>
-import Card from 'primevue/card'
-import Tag from 'primevue/tag'
-import Button from 'primevue/button'
 import { computed } from 'vue'
+import Card   from 'primevue/card'
+import Tag    from 'primevue/tag'
+import Button from 'primevue/button'
 
 const props = defineProps({
-  product: {
-    type: Object,
-    required: true,
-  },
+  product: { type: Object, required: true },
 })
 
 defineEmits(['add-to-cart'])
 
+// ---------------------------------------------------------------------------
+// Price
+// ---------------------------------------------------------------------------
+
 const formatPrice = (price) => {
-  if (!price) return '0.00'
-  return parseFloat(price).toFixed(2)
-}
-
-const getMinPrice = () => {
-  if (!props.product.variants || props.product.variants.length === 0) {
-    return props.product.base_price
-  }
-  return Math.min(...props.product.variants.map(v => parseFloat(v.price)))
-}
-
-const getMaxPrice = () => {
-  if (!props.product.variants || props.product.variants.length === 0) {
-    return props.product.base_price
-  }
-  return Math.max(...props.product.variants.map(v => parseFloat(v.price)))
-}
-
-const hasInStock = () => {
-  if (!props.product.variants || props.product.variants.length === 0) {
-    return true // Assume in stock if no variants
-  }
-  return props.product.variants.some(v => {
-    const inv = v.inventory || {}
-    return inv.quantity > 0
+  if (price == null || isNaN(price)) return '0.00'
+  return parseFloat(price).toLocaleString('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })
 }
 
-const hasLowStock = () => {
-  if (!props.product.variants || props.product.variants.length === 0) {
-    return false
+const minPrice = computed(() => {
+  if (!props.product.variants?.length) return props.product.base_price
+  return Math.min(...props.product.variants.map(v => parseFloat(v.price ?? 0)))
+})
+
+const maxPrice = computed(() => {
+  if (!props.product.variants?.length) return props.product.base_price
+  return Math.max(...props.product.variants.map(v => parseFloat(v.price ?? 0)))
+})
+
+// ---------------------------------------------------------------------------
+// Stock — backend sends stock_status on every variant for all roles.
+// stock_quantity is only present for staff/admin (null for cashiers).
+//
+// Priority across all variants:
+//   any in_stock  → product is "In Stock"
+//   any low_stock → product is "Low Stock"  (only if none are in_stock)
+//   all out       → product is "Out of Stock"
+// ---------------------------------------------------------------------------
+
+const overallStockStatus = computed(() => {
+  const variants = props.product.variants
+
+  // No variants — fall back gracefully
+  if (!variants?.length) return 'in_stock'
+
+  // Prefer raw quantity when available (staff view)
+  const hasQuantity = variants.some(v => v.stock_quantity != null)
+
+  if (hasQuantity) {
+    const anyInStock  = variants.some(v => (v.stock_quantity ?? 0) > (v.stock_threshold ?? 10))
+    const anyLowStock = variants.some(v => {
+      const qty = v.stock_quantity ?? 0
+      return qty > 0 && qty <= (v.stock_threshold ?? 10)
+    })
+    if (anyInStock)  return 'in_stock'
+    if (anyLowStock) return 'low_stock'
+    return 'out_of_stock'
   }
-  return props.product.variants.some(v => {
-    const inv = v.inventory || {}
-    const threshold = v.stock_threshold || 10
-    return inv.quantity > 0 && inv.quantity <= threshold
-  })
-}
+
+  // Cashier path — use server-computed stock_status label
+  if (variants.some(v => v.stock_status === 'in_stock'))  return 'in_stock'
+  if (variants.some(v => v.stock_status === 'low_stock')) return 'low_stock'
+  return 'out_of_stock'
+})
+
+const stockTag = computed(() => {
+  switch (overallStockStatus.value) {
+    case 'in_stock':    return { label: 'In Stock',     severity: 'success' }
+    case 'low_stock':   return { label: 'Low Stock',    severity: 'warn'    }
+    default:            return { label: 'Out of Stock', severity: 'danger'  }
+  }
+})
 </script>
 
 <style scoped>
@@ -115,4 +141,3 @@ const hasLowStock = () => {
   overflow: hidden;
 }
 </style>
-

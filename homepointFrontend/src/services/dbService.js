@@ -1,81 +1,81 @@
+// services/dbService.js
 import db from '@/db/index'
 import api from '@/services/api'
 
+// ---------------------------------------------------------------------------
+// Sync  — one API call instead of four
+// ---------------------------------------------------------------------------
+
 /**
- * Sync products, variants, categories, and inventory from API to Dexie
+ * Pulls everything from /products/products/ in a single request.
+ * The backend already nests category + variants, and strips secret fields
+ * (cost_price, stock_quantity, stock_threshold) for non-staff users.
+ * What arrives here is exactly what this user is allowed to see — no
+ * client-side filtering needed.
  */
 export const syncProducts = async () => {
   try {
-    // Fetch all data from API
-    const [categories, products, variants, inventory] = await Promise.all([
-      api.get('/products/categories/'),
-      api.get('/products/products/'),
-      api.get('/products/variants/'),
-      api.get('/products/inventory/'),
-    ])
+    const response = await api.get('/products/products/')
+    const productsData = response?.results ?? (Array.isArray(response) ? response : [])
 
-    // Clear existing data (optional - you might want incremental updates)
-    await Promise.all([
-      db.categories.clear(),
-      db.products.clear(),
-      db.variants.clear(),
-      db.inventory.clear(),
-    ])
+    const products   = []
+    const variants   = []
+    const categories = new Map()  // deduplicate by id
 
-    // Insert categories
-    if (categories && categories.results) {
-      await db.categories.bulkPut(categories.results.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        parent_id: cat.parent,
-        description: cat.description,
-      })))
-    } else if (Array.isArray(categories)) {
-      await db.categories.bulkPut(categories.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        parent_id: cat.parent,
-        description: cat.description,
-      })))
+    for (const prod of productsData) {
+      const cat = prod.category_detail
+      if (cat) {
+        categories.set(cat.id, {
+          id:          cat.id,
+          name:        cat.name,
+          slug:        cat.slug,
+          parent_id:   cat.parent ?? null,
+          description: cat.description ?? '',
+        })
+      }
+
+      products.push({
+        id:          prod.id,
+        name:        prod.name,
+        slug:        prod.slug,
+        description: prod.description ?? '',
+        base_price:  prod.base_price,
+        is_active:   prod.is_active,
+        image:       prod.image ?? null,
+        category_id: prod.category?.id ?? null,
+      })
+
+      for (const v of (prod.variants ?? [])) {
+        variants.push({
+          id:               v.id,
+          product_id:       prod.id,
+          sku:              v.sku,
+          item_code:        v.item_code ?? v.sku,
+          price:            parseFloat(v.price ?? 0),
+
+          // Staff-only fields — null when stripped by backend
+          cost_price:       v.cost_price      != null ? parseFloat(v.cost_price) : null,
+          stock_quantity:   v.stock_quantity   ?? null,
+          stock_threshold:  v.stock_threshold  ?? null,
+
+          // Always present — server computes this for all roles
+          stock_status:     v.stock_status ?? 'in_stock',  // "in_stock" | "low_stock" | "out_of_stock"
+
+          unit_type:         v.unit_type         ?? 'piece',
+          unit_type_display: v.unit_type_display ?? 'Per Piece',
+          attributes:        v.attributes        ?? {},
+          tax_type:          v.tax_type           ?? 'A',
+        })
+      }
     }
 
-    // Insert products
-    const productsData = products?.results || (Array.isArray(products) ? products : [])
-    await db.products.bulkPut(productsData.map(prod => ({
-      id: prod.id,
-      name: prod.name,
-      slug: prod.slug,
-      category_id: prod.category,
-      base_price: prod.base_price,
-      is_active: prod.is_active,
-      description: prod.description,
-    })))
+    await db.transaction('rw', db.categories, db.products, db.variants, async () => {
+      await Promise.all([db.categories.clear(), db.products.clear(), db.variants.clear()])
+      await db.categories.bulkPut([...categories.values()])
+      await db.products.bulkPut(products)
+      await db.variants.bulkPut(variants)
+    })
 
-    // Insert variants
-    const variantsData = variants?.results || (Array.isArray(variants) ? variants : [])
-    await db.variants.bulkPut(variantsData.map(variant => ({
-      id: variant.id,
-      product_id: variant.product,
-      sku: variant.sku,
-      price: variant.price,
-      unit_type: variant.unit_type,
-      stock_threshold: variant.stock_threshold,
-      attributes: variant.attributes || {},
-    })))
-
-    // Insert inventory
-    const inventoryData = inventory?.results || (Array.isArray(inventory) ? inventory : [])
-    await db.inventory.bulkPut(inventoryData.map(inv => ({
-      id: inv.id,
-      variant_id: inv.variant,
-      quantity: inv.quantity,
-      last_updated: inv.last_updated,
-      location: inv.location || '',
-    })))
-
-    // Update sync metadata
     const now = new Date().toISOString()
     await db.syncMetadata.put({ id: 1, table_name: 'all', last_sync: now })
 
@@ -86,102 +86,70 @@ export const syncProducts = async () => {
   }
 }
 
-/**
- * Get all products with their variants and inventory
- */
+// ---------------------------------------------------------------------------
+// Catalog view  — getProducts()
+// Returns: products with nested variants (ProductCard / ProductCatalogView)
+// ---------------------------------------------------------------------------
+
 export const getProducts = async () => {
   try {
-    const products = await db.products.toArray()
-    const variants = await db.variants.toArray()
-    const inventory = await db.inventory.toArray()
-    const categories = await db.categories.toArray()
+    const [products, variants, categories] = await Promise.all([
+      db.products.toArray(),
+      db.variants.toArray(),
+      db.categories.toArray(),
+    ])
 
-    // Create lookup maps
     const categoryMap = new Map(categories.map(c => [c.id, c]))
-    const variantMap = new Map(variants.map(v => [v.id, v]))
-    const inventoryMap = new Map(inventory.map(i => [i.variant_id, i]))
 
-    // Enrich products with variants and inventory
-    return products.map(product => {
-      const productVariants = variants
-        .filter(v => v.product_id === product.id)
-        .map(variant => ({
-          ...variant,
-          inventory: inventoryMap.get(variant.id) || { quantity: 0 },
-        }))
-
-      return {
-        ...product,
-        category: categoryMap.get(product.category_id),
-        variants: productVariants,
-      }
-    })
+    return products.map(product => ({
+      ...product,
+      category: categoryMap.get(product.category_id) ?? null,
+      variants: variants.filter(v => v.product_id === product.id),
+    }))
   } catch (error) {
-    console.error('Failed to get products from DB:', error)
+    console.error('getProducts failed:', error)
     throw error
   }
 }
 
+// ---------------------------------------------------------------------------
+// POS view  — getSellableItems()
+// Returns: flat variant rows (PosItemCard / POSView)
+// ---------------------------------------------------------------------------
 
-/**
- * Get flat, sellable variant rows — one row per variant.
- * Used by: POSView
- *
- * Each row is self-contained: has the parent product name, price,
- * stock quantity, and everything PosItemCard needs.
- */
 export const getSellableItems = async () => {
   try {
-    const [variants, inventory, products] = await Promise.all([
+    const [variants, products] = await Promise.all([
       db.variants.toArray(),
-      db.inventory.toArray(),
       db.products.toArray(),
     ])
 
-    const productMap  = new Map(products.map(p => [p.id, p]))
-    const inventoryMap = new Map(inventory.map(i => [i.variant_id, i]))
+    const productMap = new Map(products.map(p => [p.id, p]))
 
     return variants.map(variant => {
       const parent = productMap.get(variant.product_id)
-      if (!parent) return null // orphan variant — should not happen
+      if (!parent) return null
 
-      const inv = inventoryMap.get(variant.id) ?? { quantity: 0, is_low_stock: false }
-
-      // Build a human-readable display name, e.g. "Steel Pipe • 6m"
-      const attrSuffix = Object.values(variant.attributes ?? {}).join(' • ')
-      const displayName = attrSuffix
-        ? `${parent.name} • ${attrSuffix}`
-        : parent.name
+      const attrSuffix  = Object.values(variant.attributes ?? {}).join(' • ')
+      const displayName = attrSuffix ? `${parent.name} • ${attrSuffix}` : parent.name
 
       return {
-        // Identity
-        id: variant.id,
-        product_id: variant.product_id,
-        sku: variant.sku,
-        item_code: variant.item_code ?? variant.sku,
-
-        // Display
-        name: parent.name,
+        id:           variant.id,
+        product_id:   variant.product_id,
+        sku:          variant.sku,
+        item_code:    variant.item_code,
+        name:         parent.name,
         display_name: displayName.trim(),
-        image: parent.image ?? null,
-
-        // Pricing
-        price: parseFloat(variant.price ?? 0),
-
-        // Unit info
-        unit_type: variant.unit_type ?? 'piece',
-        unit_type_display: variant.unit_type_display ?? 'Per Piece',
-
-        // Attributes (size, colour, etc.)
-        attributes: variant.attributes ?? {},
-
-        // Stock
-        stock_quantity: inv.quantity ?? 0,
-        is_low_stock: inv.is_low_stock ?? (inv.quantity <= (variant.stock_threshold ?? 10)),
-        stock_threshold: variant.stock_threshold ?? 10,
-
-        // Tax
-        tax_type: variant.tax_type ?? 'A',
+        image:        parent.image ?? null,
+        price:        variant.price,
+        cost_price:   variant.cost_price,      // null for cashiers — POS won't show it
+        stock_status:    variant.stock_status, // always safe to show
+        stock_quantity:  variant.stock_quantity,   // null for cashiers
+        stock_threshold: variant.stock_threshold,  // null for cashiers
+        unit_type:         variant.unit_type,
+        unit_type_display: variant.unit_type_display,
+        attributes:        variant.attributes,
+        tax_type:          variant.tax_type,
       }
     }).filter(Boolean)
   } catch (error) {
@@ -190,80 +158,75 @@ export const getSellableItems = async () => {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Barcode scan
+// ---------------------------------------------------------------------------
 
-
-/**
- * Search products locally using Dexie
- */
-export const searchProducts = async (query) => {
-  try {
-    if (!query || query.trim() === '') {
-      return await getProducts()
-    }
-
-    const searchTerm = query.toLowerCase().trim()
-    
-    // Search in products table
-    const products = await db.products
-      .filter(p => 
-        p.name.toLowerCase().includes(searchTerm) ||
-        p.description?.toLowerCase().includes(searchTerm)
-      )
-      .toArray()
-
-    // Search in variants by SKU
-    const variants = await db.variants
-      .filter(v => v.sku.toLowerCase().includes(searchTerm))
-      .toArray()
-
-    // Get unique product IDs
-    const productIds = new Set([
-      ...products.map(p => p.id),
-      ...variants.map(v => v.product_id),
-    ])
-
-    // Fetch full product data with variants
-    const allProducts = await getProducts()
-    return allProducts.filter(p => productIds.has(p.id))
-  } catch (error) {
-    console.error('Search failed:', error)
-    throw error
-  }
-}
-
-/**
- * Get product by SKU (for barcode scanning)
- */
 export const getProductBySKU = async (sku) => {
   try {
     const variant = await db.variants.where('sku').equals(sku).first()
     if (!variant) return null
 
-    const product = await db.products.get(variant.product_id)
-    const inventory = await db.inventory.where('variant_id').equals(variant.id).first()
+    const parent = await db.products.get(variant.product_id)
+    if (!parent) return null
+
+    const attrSuffix = Object.values(variant.attributes ?? {}).join(' • ')
 
     return {
-      ...product,
-      variant: {
-        ...variant,
-        inventory: inventory || { quantity: 0 },
-      },
+      ...variant,
+      name:         parent.name,
+      display_name: attrSuffix ? `${parent.name} • ${attrSuffix}` : parent.name,
+      image:        parent.image ?? null,
     }
   } catch (error) {
-    console.error('Failed to get product by SKU:', error)
+    console.error('getProductBySKU failed:', error)
     return null
   }
 }
 
-/**
- * Get sync status
- */
+// ---------------------------------------------------------------------------
+// Local search
+// ---------------------------------------------------------------------------
+
+export const searchProducts = async (query) => {
+  try {
+    if (!query?.trim()) return getProducts()
+
+    const term = query.toLowerCase().trim()
+
+    const [matchedProducts, matchedVariants] = await Promise.all([
+      db.products.filter(p =>
+        p.name.toLowerCase().includes(term) ||
+        p.description?.toLowerCase().includes(term)
+      ).toArray(),
+      db.variants.filter(v =>
+        v.sku.toLowerCase().includes(term) ||
+        v.item_code?.toLowerCase().includes(term)
+      ).toArray(),
+    ])
+
+    const ids = new Set([
+      ...matchedProducts.map(p => p.id),
+      ...matchedVariants.map(v => v.product_id),
+    ])
+
+    const all = await getProducts()
+    return all.filter(p => ids.has(p.id))
+  } catch (error) {
+    console.error('searchProducts failed:', error)
+    throw error
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sync metadata
+// ---------------------------------------------------------------------------
+
 export const getSyncStatus = async () => {
   try {
     const metadata = await db.syncMetadata.get(1)
-    return metadata ? metadata.last_sync : null
-  } catch (error) {
+    return metadata?.last_sync ?? null
+  } catch {
     return null
   }
 }
-

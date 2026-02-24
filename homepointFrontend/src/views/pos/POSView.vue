@@ -10,8 +10,15 @@
             @select="handleProductSelected"
           />
           <Button
+            icon="pi pi-refresh"
+            label="Sync"
+            @click="handleSync"
+            :loading="syncing"
+            outlined
+          />
+          <Button
             icon="pi pi-barcode"
-            label="Scan Barcode"
+            label="Scan"
             @click="showScanner = true"
             outlined
           />
@@ -19,11 +26,7 @@
       </div>
 
       <div class="flex-1 overflow-auto">
-        <DataView
-          v-if="!loading"
-          :value="sellableItems"
-          :layout="'grid'"
-        >
+        <DataView v-if="!loading" :value="sellableItems" layout="grid">
           <template #grid="slotProps">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               <PosItemCard
@@ -42,6 +45,7 @@
             </div>
           </template>
         </DataView>
+
         <div v-else class="flex justify-center items-center py-12">
           <ProgressSpinner />
         </div>
@@ -63,10 +67,7 @@
       :closable="false"
       @hide="showScanner = false"
     >
-      <BarcodeScanner
-        :visible="showScanner"
-        @close="showScanner = false"
-      />
+      <BarcodeScanner :visible="showScanner" @close="showScanner = false" />
     </Dialog>
   </div>
 </template>
@@ -85,59 +86,42 @@ import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from 'primevue/usetoast'
 
-const showScanner = ref(false)
+const showScanner  = ref(false)
 const sellableItems = ref([])
-const loading = ref(true)
+const loading      = ref(true)
+const syncing      = ref(false)   // ← was missing in your version
 
 const cartStore = useCartStore()
-const toast = useToast()
-
-
-const handleSync = async () => {
-  syncing.value = true
-  try {
-    await syncProducts()
-    await loadSellableItems()
-    toast.add({
-      severity: 'success',
-      summary: 'Sync Complete',
-      detail: 'Products synchronized successfully',
-      life: 3000,
-    })
-  } catch (error) {
-    console.error('Sync error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Sync Failed',
-      detail: 'Failed to synchronize products',
-      life: 3000,
-    })
-  } finally {
-    syncing.value = false
-  }
-}
-
+const toast     = useToast()
 
 const loadSellableItems = async () => {
   loading.value = true
   try {
     sellableItems.value = await getSellableItems()
   } catch (error) {
-    console.error('Failed to load product variants:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load product variants',
-      life: 3000,
-    })
+    console.error('Failed to load sellable items:', error)
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load products', life: 3000 })
   } finally {
     loading.value = false
   }
 }
 
-const handleAddToCart = (item) => {          // item = variant-like object from getSellableItems
-  cartStore.addItem(item, 1)
+const handleSync = async () => {
+  syncing.value = true
+  try {
+    await syncProducts()
+    await loadSellableItems()
+    toast.add({ severity: 'success', summary: 'Sync Complete', detail: 'Products synchronized successfully', life: 3000 })
+  } catch (error) {
+    console.error('Sync error:', error)
+    toast.add({ severity: 'error', summary: 'Sync Failed', detail: 'Failed to synchronize products', life: 3000 })
+  } finally {
+    syncing.value = false
+  }
+}
 
+const handleAddToCart = (item) => {
+  cartStore.addItem(item, 1)
   toast.add({
     severity: 'success',
     summary: 'Added',
@@ -146,18 +130,13 @@ const handleAddToCart = (item) => {          // item = variant-like object from 
   })
 }
 
-const handleProductSelected = () => {
-  // ProductSearch already adds to cart on select; toast is shown there
+const handleProductSelected = (item) => {
+  if (item) handleAddToCart(item)
 }
 
 const handleCheckout = () => {
   if (cartStore.items.length === 0) return
-  toast.add({
-    severity: 'info',
-    summary: 'Checkout',
-    detail: 'Checkout flow coming soon',
-    life: 3000,
-  })
+  toast.add({ severity: 'info', summary: 'Checkout', detail: 'Checkout flow coming soon', life: 3000 })
 }
 
 onMounted(loadSellableItems)
