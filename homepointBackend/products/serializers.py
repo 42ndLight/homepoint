@@ -18,7 +18,6 @@ def get_user_role(request):
 PRIVILEGED_ROLES = {'admin', 'staff'}
 
 class CategorySerializer(serializers.ModelSerializer):   
-    
 
     class Meta:
         model = Category

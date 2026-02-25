@@ -42,7 +42,7 @@ export const syncProducts = async () => {
         base_price:  prod.base_price,
         is_active:   prod.is_active,
         image:       prod.image ?? null,
-        category_id: prod.category?.id ?? null,
+        category_id: prod.category || null,
       })
 
       for (const v of (prod.variants ?? [])) {
@@ -103,7 +103,7 @@ export const getProducts = async () => {
 
     return products.map(product => ({
       ...product,
-      category: categoryMap.get(product.category_id) ?? null,
+      category_detail: categoryMap.get(product.category_id),
       variants: variants.filter(v => v.product_id === product.id),
     }))
   } catch (error) {

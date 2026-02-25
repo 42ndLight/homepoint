@@ -1,5 +1,6 @@
 import api from '@/services/api'
 import db from '@/db/index'
+import { syncProducts } from '@/services/dbService'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -20,80 +21,9 @@ function toArray(data) {
  * @returns {Promise<{ success: boolean, timestamp?: string, error?: string }>}
  */
 export async function syncAll() {
-  try {
-    const [categories, products, variants, inventory] = await Promise.all([
-      api.get('/products/categories/'),
-      api.get('/products/products/'),
-      api.get('/products/variants/'),
-      api.get('/products/inventory/'),
-    ])
-
-    const now = new Date().toISOString()
-
-    await Promise.all([
-      db.categories.clear(),
-      db.products.clear(),
-      db.variants.clear(),
-      db.inventory.clear(),
-    ])
-
-    const categoriesData = toArray(categories)
-    await db.categories.bulkPut(
-      categoriesData.map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        parent_id: cat.parent,
-        description: cat.description,
-      }))
-    )
-
-    const productsData = toArray(products)
-    await db.products.bulkPut(
-      productsData.map((prod) => ({
-        id: prod.id,
-        name: prod.name,
-        slug: prod.slug,
-        category_id: prod.category,
-        base_price: prod.base_price,
-        is_active: prod.is_active,
-        description: prod.description,
-      }))
-    )
-
-    const variantsData = toArray(variants)
-    await db.variants.bulkPut(
-      variantsData.map((variant) => ({
-        id: variant.id,
-        product_id: variant.product,
-        sku: variant.sku,
-        price: variant.price,
-        unit_type: variant.unit_type,
-        stock_threshold: variant.stock_threshold,
-        attributes: variant.attributes || {},
-      }))
-    )
-
-    const inventoryData = toArray(inventory)
-    await db.inventory.bulkPut(
-      inventoryData.map((inv) => ({
-        id: inv.id,
-        variant_id: inv.variant,
-        quantity: inv.quantity,
-        last_updated: inv.last_updated,
-        location: inv.location || '',
-      }))
-    )
-
-    await db.syncMetadata.put({ id: 1, table_name: 'all', last_sync: now })
-
-    return { success: true, timestamp: now }
-  } catch (error) {
-    const message = error?.message || error?.detail || 'Sync failed'
-    console.error('[syncService] syncAll failed:', error)
-    return { success: false, error: message }
-  }
+  return await syncProducts()
 }
+  
 
 /**
  * Get last sync timestamp from Dexie (for UI without running sync).

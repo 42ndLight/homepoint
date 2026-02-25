@@ -10,96 +10,111 @@ class APIClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
-    
-    // Get token from localStorage to avoid circular dependency
-    const token = localStorage.getItem('jwt_token')
+    const headers = this.prepareHeaders(options.headers)
 
-    // Prepare headers
+    try {
+      const response = await this.fetchWithTimeout(url, { ...options, headers })
+      
+      if (response.status === 401) {
+        return await this.handleUnauthorized(url, options, headers)
+      }
+
+      return this.handleResponse(response)
+    } catch (error) {
+      return this.handleRequestError(error)
+    }
+  }
+
+  prepareHeaders(customHeaders = {}) {
+    const token = localStorage.getItem('jwt_token')
     const headers = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...customHeaders,
     }
 
-    // Add authorization token if available
     if (token) {
       headers.Authorization = `Bearer ${token}`
     }
 
-    // Create abort controller for timeout
+    return headers
+  }
+
+  async fetchWithTimeout(url, options) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
     try {
       const response = await fetch(url, {
         ...options,
-        headers,
         signal: controller.signal,
       })
-
       clearTimeout(timeoutId)
-
-      // Handle 401 Unauthorized - token expired or invalid
-      if (response.status === 401) {
-        // Try to refresh token if refresh token exists
-        const refreshToken = localStorage.getItem('refresh_token')
-        if (refreshToken) {
-          try {
-            const refreshResponse = await fetch(`${this.baseURL}/users/auth/token/refresh/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refresh: refreshToken }),
-            })
-
-            if (refreshResponse.ok) {
-              const refreshData = await refreshResponse.json()
-              // Update token in localStorage
-              localStorage.setItem('jwt_token', refreshData.access)
-              // Retry original request with new token
-              // Create a new AbortController for the retry to avoid timeout issues
-              const retryController = new AbortController()
-              const retryTimeoutId = setTimeout(() => retryController.abort(), this.timeout)
-              headers.Authorization = `Bearer ${refreshData.access}`
-              try {
-                const retryResponse = await fetch(url, {
-                  ...options,
-                  headers,
-                  signal: retryController.signal,
-                })
-                clearTimeout(retryTimeoutId)
-                return this.handleResponse(retryResponse)
-              } catch (retryError) {
-                clearTimeout(retryTimeoutId)
-                throw retryError
-              }
-            }
-          } catch (refreshError) {
-            // Refresh failed, clear auth and redirect
-            localStorage.removeItem('jwt_token')
-            localStorage.removeItem('refresh_token')
-            localStorage.removeItem('user')
-            window.location.href = '/login'
-            throw new Error('Session expired. Please login again.')
-          }
-        } else {
-          // No refresh token, clear auth and redirect
-          localStorage.removeItem('jwt_token')
-          localStorage.removeItem('refresh_token')
-          localStorage.removeItem('user')
-          window.location.href = '/login'
-          throw new Error('Session expired. Please login again.')
-        }
-      }
-
-      return this.handleResponse(response)
+      return response
     } catch (error) {
       clearTimeout(timeoutId)
-      
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout. Please try again.')
-      }
-      
       throw error
     }
+  }
+
+  async handleUnauthorized(url, options, headers) {
+    const refreshToken = localStorage.getItem('refresh_token')
+    
+    if (!refreshToken) {
+      this.clearAuthAndRedirect()
+      throw new Error('Session expired. Please login again.')
+    }
+
+    try {
+      const newAccessToken = await this.refreshAccessToken(refreshToken)
+      return await this.retryRequestWithNewToken(url, options, headers, newAccessToken)
+    } catch (refreshError) {
+      this.clearAuthAndRedirect()
+      throw new Error('Session expired. Please login again.')
+    }
+  }
+
+  async refreshAccessToken(refreshToken) {
+    const refreshResponse = await fetch(`${this.baseURL}/users/auth/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    })
+
+    if (!refreshResponse.ok) {
+      throw new Error('Token refresh failed')
+    }
+
+    const refreshData = await refreshResponse.json()
+    localStorage.setItem('jwt_token', refreshData.access)
+    return refreshData.access
+  }
+
+  async retryRequestWithNewToken(url, options, headers, newAccessToken) {
+    const updatedHeaders = {
+      ...headers,
+      Authorization: `Bearer ${newAccessToken}`
+    }
+
+    const retryResponse = await this.fetchWithTimeout(url, {
+      ...options,
+      headers: updatedHeaders,
+    })
+
+    return this.handleResponse(retryResponse)
+  }
+
+  clearAuthAndRedirect() {
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+    window.location.href = '/login'
+  }
+
+  handleRequestError(error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout. Please try again.')
+    }
+    throw error
   }
 
   async handleResponse(response) {
@@ -160,4 +175,3 @@ class APIClient {
 const api = new APIClient(config.API_BASE_URL)
 
 export default api
-

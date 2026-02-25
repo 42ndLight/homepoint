@@ -12,7 +12,7 @@
     </template>
 
     <template #subtitle>
-      <Tag :value="product.category?.name || 'Uncategorized'" severity="info" />
+      <Tag :value="categoryName" severity="info" />
     </template>
 
     <template #content>
@@ -62,6 +62,9 @@ import Button from 'primevue/button'
 
 const props = defineProps({
   product: { type: Object, required: true },
+})
+const categoryName = computed(() => {
+  return props.product.category_detail?.name ?? 'Uncategorized'         
 })
 
 defineEmits(['add-to-cart'])
