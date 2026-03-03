@@ -69,6 +69,11 @@
     >
       <BarcodeScanner :visible="showScanner" @close="showScanner = false" />
     </Dialog>
+
+    <CheckoutForm
+      v-model="showCheckout"
+      @order-complete="handleOrderComplete"
+    />
   </div>
 </template>
 
@@ -82,14 +87,16 @@ import ProductSearch from '@/components/search/ProductSearch.vue'
 import PosItemCard from '@/components/product/PosItemCard.vue'
 import CartPanel from '@/components/cart/CartPanel.vue'
 import BarcodeScanner from '@/components/barcode/BarcodeScanner.vue'
+import CheckoutForm from '@/components/checkout/CheckoutForm.vue'
 import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from 'primevue/usetoast'
 
-const showScanner  = ref(false)
+const showScanner   = ref(false)
+const showCheckout  = ref(false)
 const sellableItems = ref([])
-const loading      = ref(true)
-const syncing      = ref(false)   // ← was missing in your version
+const loading       = ref(true)
+const syncing       = ref(false)
 
 const cartStore = useCartStore()
 const toast     = useToast()
@@ -136,7 +143,16 @@ const handleProductSelected = (item) => {
 
 const handleCheckout = () => {
   if (cartStore.items.length === 0) return
-  toast.add({ severity: 'info', summary: 'Checkout', detail: 'Checkout flow coming soon', life: 3000 })
+  showCheckout.value = true
+}
+
+const handleOrderComplete = (order) => {
+  toast.add({
+    severity: 'success',
+    summary: 'Order Created',
+    detail: `Order #${order.id} placed successfully`,
+    life: 5000,
+  })
 }
 
 onMounted(loadSellableItems)

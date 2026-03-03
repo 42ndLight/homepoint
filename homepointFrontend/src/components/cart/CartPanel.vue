@@ -56,11 +56,14 @@
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
 import CartItem from './CartItem.vue'
+import Checkout from '../checkout/CheckoutForm.vue'
 import { useCartStore } from '@/stores/cart'
+import { useOrderStore } from '@/stores/order'
 
 defineEmits(['checkout'])
 
 const cartStore = useCartStore()
+const order = useOrderStore()
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0.00'

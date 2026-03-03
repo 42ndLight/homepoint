@@ -49,7 +49,7 @@ def get_mpesa_access_token():
 
     except requests.exceptions.RequestException as req_err:
         logger.error(f"M-Pesa connection/request failed: {req_err}")
-        raise MpesaConnectionError("Failed to reach Safaricom OAuth server") from req_err
+        raise ConnectionError("Failed to reach Safaricom OAuth server") from req_err
 
     except Exception:
         logger.exception("Unexpected error in M-Pesa token generation")

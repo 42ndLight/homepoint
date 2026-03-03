@@ -87,6 +87,7 @@ export const useCartStore = defineStore('cart', () => {
         price: Number.parseFloat(variant.price),
         quantity: qty,
         unit_type: variant.unit_type || 'piece',
+        tax_type: variant.tax_type,
         attributes: variant.attributes || {},
       })
     }
