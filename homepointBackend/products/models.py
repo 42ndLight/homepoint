@@ -22,7 +22,10 @@ class Product(models.Model):
     description = models.TextField()  # Detailed info, materials, usage tips for fundis
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     base_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Starting price in KES")  # For display; variants override
-    is_active = models.BooleanField(default=True)  # To hide discontinued products
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+            ordering = ['-id']
 
     def save(self, *args, **kwargs):
         if not self.slug:

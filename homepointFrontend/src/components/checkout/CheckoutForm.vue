@@ -151,11 +151,21 @@
           </div>
         </div>
 
-        <Button
-          label="Done"
-          class="w-full mt-6"
-          @click="handleDone"
-        />
+        <div class="flex gap-3 mt-6">
+          <Button
+            label="View Orders"
+            icon="pi pi-list"
+            severity="secondary"
+            outlined
+            class="flex-1"
+            @click="handleViewOrders"
+          />
+          <Button
+            label="Done"
+            class="flex-1"
+            @click="handleDone"
+          />
+        </div>
       </div>
     </template>
   </Dialog>
@@ -163,6 +173,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import RadioButton from 'primevue/radiobutton'
@@ -180,6 +191,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'order-complete'])
 
+
+const toast = useToast()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
 
@@ -292,6 +305,14 @@ const handleSubmit = async () => {
     orderTotal.value = cartStore.total
     orderComplete.value = true
     emit('order-complete', result.order)
+
+    // Show success toast
+    toast.add({
+      severity: 'success',
+      summary: 'Order Placed',
+      detail: `Order #${result.order.id} has been created successfully`,
+      life: 3000,
+    })
   }
 }
 
@@ -299,17 +320,23 @@ const handleDone = () => {
   visible.value = false
 }
 
+
+
 const onHide = () => {
   if (orderComplete.value) {
-    orderComplete.value = false
-    form.value = {
-      phone: '',
-      deliveryLocation: '',
-      paymentMethod: 'mpesa',
-    }
-    errors.value = { phone: '', deliveryLocation: '' }
-    orderStore.clearCurrentOrder()
+    resetForm()
   }
+}
+
+const resetForm = () => {
+  orderComplete.value = false
+  form.value = {
+    phone: '',
+    deliveryLocation: '',
+    paymentMethod: 'mpesa',
+  }
+  errors.value = { phone: '', deliveryLocation: '' }
+  orderStore.clearCurrentOrder()
 }
 
 watch(visible, (newVal) => {

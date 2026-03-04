@@ -47,6 +47,13 @@
           :disabled="cartStore.items.length === 0"
           @click="$emit('checkout')"
         />
+        <Button
+          label="Fetch Orders"
+          icon="pi pi-history"
+          class="w-full mt-4"
+          size="large"
+          @click="$emit('orders')"
+        />
       </div>
     </div>
   </Panel>
@@ -55,15 +62,14 @@
 <script setup>
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
-import CartItem from './CartItem.vue'
-import Checkout from '../checkout/CheckoutForm.vue'
+import CartItem from './CartItem.vue' 
 import { useCartStore } from '@/stores/cart'
 import { useOrderStore } from '@/stores/order'
 
-defineEmits(['checkout'])
+const emit = defineEmits(['checkout', 'orders'])
 
 const cartStore = useCartStore()
-const order = useOrderStore()
+const orderStore = useOrderStore()
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0.00'

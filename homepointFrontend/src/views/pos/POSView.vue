@@ -54,7 +54,9 @@
 
     <!-- Right: Cart panel -->
     <div class="w-96 flex-shrink-0">
-      <CartPanel @checkout="handleCheckout" />
+      <CartPanel
+        @checkout="handleCheckout"
+         />
     </div>
 
     <Dialog
@@ -74,6 +76,11 @@
       v-model="showCheckout"
       @order-complete="handleOrderComplete"
     />
+    <OrderForm
+      v-model="showPendingOrders"
+
+    />
+
   </div>
 </template>
 
@@ -88,17 +95,21 @@ import PosItemCard from '@/components/product/PosItemCard.vue'
 import CartPanel from '@/components/cart/CartPanel.vue'
 import BarcodeScanner from '@/components/barcode/BarcodeScanner.vue'
 import CheckoutForm from '@/components/checkout/CheckoutForm.vue'
+import OrderForm from '@/components/checkout/OrderForm.vue'
 import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
+
 import { useToast } from 'primevue/usetoast'
 
 const showScanner   = ref(false)
 const showCheckout  = ref(false)
+const showPendingOrders = ref(false)
 const sellableItems = ref([])
 const loading       = ref(true)
 const syncing       = ref(false)
 
 const cartStore = useCartStore()
+
 const toast     = useToast()
 
 const loadSellableItems = async () => {
@@ -144,6 +155,10 @@ const handleProductSelected = (item) => {
 const handleCheckout = () => {
   if (cartStore.items.length === 0) return
   showCheckout.value = true
+}
+
+const handleViewOrders = () => {
+  showPendingOrders.value = true
 }
 
 const handleOrderComplete = (order) => {
