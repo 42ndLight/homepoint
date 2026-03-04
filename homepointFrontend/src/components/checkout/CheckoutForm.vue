@@ -151,15 +151,7 @@
           </div>
         </div>
 
-        <div class="flex gap-3 mt-6">
-          <Button
-            label="View Orders"
-            icon="pi pi-list"
-            severity="secondary"
-            outlined
-            class="flex-1"
-            @click="handleViewOrders"
-          />
+        <div class="flex mt-6">
           <Button
             label="Done"
             class="flex-1"
@@ -173,7 +165,6 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import RadioButton from 'primevue/radiobutton'
@@ -190,9 +181,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'order-complete'])
-
-
-const toast = useToast()
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
 
@@ -294,6 +282,8 @@ const handleSubmit = async () => {
 
   const formattedPhone = formatPhoneForAPI(form.value.phone)
 
+  const totalBeforeOrder = cartStore.total
+
   const result = await orderStore.createOrder(
     cartStore.items,
     formattedPhone,
@@ -302,17 +292,9 @@ const handleSubmit = async () => {
   )
 
   if (result.success) {
-    orderTotal.value = cartStore.total
+    orderTotal.value = totalBeforeOrder
     orderComplete.value = true
     emit('order-complete', result.order)
-
-    // Show success toast
-    toast.add({
-      severity: 'success',
-      summary: 'Order Placed',
-      detail: `Order #${result.order.id} has been created successfully`,
-      life: 3000,
-    })
   }
 }
 

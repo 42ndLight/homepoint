@@ -76,16 +76,31 @@
       v-model="showCheckout"
       @order-complete="handleOrderComplete"
     />
-    <OrderForm
-      v-model="showPendingOrders"
 
-    />
+    <div class="fixed bottom-6 right-6 z-30">
+      <Button
+        label="Orders"
+        icon="pi pi-receipt"
+        severity="secondary"
+        outlined
+        class="relative"
+        @click="showOrdersSidebar = true"
+      >
+        <Badge
+          v-if="pendingCount > 0"
+          :value="pendingCount"
+          severity="warn"
+          class="absolute -top-2 -right-2"
+        />
+      </Button>
+    </div>
 
+    <OrdersSidebar v-model="showOrdersSidebar" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import DataView from 'primevue/dataview'
@@ -95,22 +110,27 @@ import PosItemCard from '@/components/product/PosItemCard.vue'
 import CartPanel from '@/components/cart/CartPanel.vue'
 import BarcodeScanner from '@/components/barcode/BarcodeScanner.vue'
 import CheckoutForm from '@/components/checkout/CheckoutForm.vue'
-import OrderForm from '@/components/checkout/OrderForm.vue'
+import OrdersSidebar from '@/components/checkout/OrdersSidebar.vue'
+import Badge from 'primevue/badge'
 import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
-
+import { useOrderStore } from '@/stores/order'
 import { useToast } from 'primevue/usetoast'
 
-const showScanner   = ref(false)
-const showCheckout  = ref(false)
-const showPendingOrders = ref(false)
-const sellableItems = ref([])
+const showScanner       = ref(false)
+const showCheckout      = ref(false)
+const showOrdersSidebar = ref(false)
+const sellableItems     = ref([])
 const loading       = ref(true)
 const syncing       = ref(false)
 
-const cartStore = useCartStore()
+const cartStore  = useCartStore()
+const orderStore = useOrderStore()
+const toast      = useToast()
 
-const toast     = useToast()
+const pendingCount = computed(() =>
+  orderStore.orderHistory.filter((o) => (o.status || '').toLowerCase() === 'pending').length
+)
 
 const loadSellableItems = async () => {
   loading.value = true
@@ -157,10 +177,6 @@ const handleCheckout = () => {
   showCheckout.value = true
 }
 
-const handleViewOrders = () => {
-  showPendingOrders.value = true
-}
-
 const handleOrderComplete = (order) => {
   toast.add({
     severity: 'success',
@@ -168,6 +184,7 @@ const handleOrderComplete = (order) => {
     detail: `Order #${order.id} placed successfully`,
     life: 5000,
   })
+  showOrdersSidebar.value = true
 }
 
 onMounted(loadSellableItems)

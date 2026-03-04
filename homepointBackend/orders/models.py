@@ -19,6 +19,9 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)  # Includes delivery markup
     delivery_location = models.CharField(max_length=200)  # Simple text for MVP
 
+    class Meta:
+            ordering = ['-id']
+
     def __str__(self):
         return f"Order #{self.id} - {self.phone_number}"
 

@@ -29,7 +29,6 @@ export const useOrderStore = defineStore('order', () => {
       const orderData = {
         phone_number: customerPhone,
         delivery_location: deliveryLocation,
-        payment_method: paymentMethod,
         items,
       }
 
@@ -39,7 +38,7 @@ export const useOrderStore = defineStore('order', () => {
       orderHistory.value.unshift(response.order)
 
       // If order is pending payment, add to pending orders
-      if (response.order.status === 'PENDING') {
+      if (response.order.status === 'pending') {
         pendingOrders.value.unshift(response.order)
       }
 
@@ -100,19 +99,8 @@ export const useOrderStore = defineStore('order', () => {
   }
 
   const fetchPendingOrders = async () => {
-    loading.value = true
-    error.value = null
-
-    try {
-      const response = await api.get('/orders/orders/?status=PENDING')
-      pendingOrders.value = response.results || response
-      return { success: true, orders: pendingOrders.value }
-    } catch (err) {
-      error.value = err.message || 'Failed to fetch pending orders'
-      return { success: false, error: error.value }
-    } finally {
-      loading.value = false
-    }
+    const result = await fetchOrderHistory()
+    return { ...result, orders: pendingOrders.value }
   }
 
   const completeMpesaPayment = async (orderId, mpesaReceiptNumber, phoneNumber) => {
@@ -144,14 +132,13 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
-  const completeCashPayment = async (orderId, amount, receiptNumber = '') => {
+  const completeCashPayment = async (orderId, amount = '') => {
     loading.value = true
     error.value = null
 
     try {
-      const response = await api.post(`/orders/orders/${orderId}/complete-cash/`, {
+      const response = await api.post(`/payments/cash/`, {
         amount,
-        receipt_number: receiptNumber,
       })
 
       // Update order in current and pending lists
@@ -216,13 +203,13 @@ export const useOrderStore = defineStore('order', () => {
 
     // Update or remove from pending orders based on status
     const pendingIndex = pendingOrders.value.findIndex(o => o.id === updatedOrder.id)
-    if (updatedOrder.status === 'PENDING') {
-      if (pendingIndex !== -1) {
+    if (updatedOrder.status === 'pending') {
+      if (pendingIndex >= 0) {
         pendingOrders.value[pendingIndex] = updatedOrder
       } else {
         pendingOrders.value.unshift(updatedOrder)
       }
-    } else if (pendingIndex !== -1) {
+    } else if (pendingIndex >= 0) {
       // Remove from pending if status is no longer PENDING
       pendingOrders.value.splice(pendingIndex, 1)
     }

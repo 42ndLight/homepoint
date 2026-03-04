@@ -47,13 +47,7 @@
           :disabled="cartStore.items.length === 0"
           @click="$emit('checkout')"
         />
-        <Button
-          label="Fetch Orders"
-          icon="pi pi-history"
-          class="w-full mt-4"
-          size="large"
-          @click="$emit('orders')"
-        />
+        
       </div>
     </div>
   </Panel>
@@ -66,7 +60,7 @@ import CartItem from './CartItem.vue'
 import { useCartStore } from '@/stores/cart'
 import { useOrderStore } from '@/stores/order'
 
-const emit = defineEmits(['checkout', 'orders'])
+const emit = defineEmits(['checkout'])
 
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
