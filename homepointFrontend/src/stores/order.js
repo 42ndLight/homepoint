@@ -138,6 +138,7 @@ export const useOrderStore = defineStore('order', () => {
 
     try {
       const response = await api.post(`/payments/cash/`, {
+        orderId,
         amount,
       })
 
