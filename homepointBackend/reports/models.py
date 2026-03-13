@@ -170,7 +170,7 @@ class AccountReconciliation(models.Model):
     actual_balance = models.DecimalField(max_digits=15, decimal_places=2)
     variance = models.DecimalField(max_digits=15, decimal_places=2)
     
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     notes = models.TextField(blank=True)
     
     # Details stored as JSON
@@ -196,7 +196,7 @@ class AccountReconciliation(models.Model):
         self.variance = self.actual_balance - self.expected_balance
         
         # Auto-set status based on variance
-        if self.variance == 0:
+        if self.variance == Decimal('0'):
             self.status = 'MATCHED'
         elif self.status == 'PENDING':
             self.status = 'DISCREPANCY'
