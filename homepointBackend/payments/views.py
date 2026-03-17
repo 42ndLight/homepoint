@@ -25,7 +25,7 @@ class TransactionHistoryListView(generics.ListAPIView):
 
     def get_queryset(self):
         if self.request.user.is_staff:
-            return Transaction.objects.all()
+            return Transaction.objects.select_subclasses().all()
         return Transaction.objects.filter(user=self.request.user)
          
 
@@ -85,17 +85,57 @@ def mpesa_confirmation_url(request):
     print("M-Pesa Confirmation raw body:", raw)
 
     # Try to parse JSON, fallback to form data or raw string
-    try:
-        data = json.loads(raw)
-    except Exception:
-        data = request.POST.dict() if request.POST else raw
+    data = json.loads(raw)
 
-    # MPesa often nests payload under Body / stkCallback etc. Normalize for easier inspection.
-    payload = data.get('Body', data) if isinstance(data, dict) else data
-    print("M-Pesa Confirmation parsed payload:", payload)
+    trans_id = data.get('TransID')
+    bill_ref = data.get('BillRefNumber')
+    amount = data.get('TransAmount')
+    phone = data.get('MSISDN')
+    org_bal = data.get('OrgAccountBalance')
+
+    order_id = ''.join(filter(str.isdigit, bill_ref)) if bill_ref else None
+    try:
+        with transaction.atomic():
+            order = Order.objects.get(id=order_id)
+
+            mpesa_tx, created = MpesaTransaction.objects.update_or_create(
+                mpesa_receipt_number=trans_id,
+                defaults={
+                    'order': order,
+                    'user': order.user, # Linking to the user who made the order
+                    'amount': amount,
+                    'movement_type': 'IN',
+                    'transaction_type': 'SALES',
+                    'phone_number': phone,
+                    'status': 'SUCCESS',
+                    'callback_data': data,
+                    'reference_id': trans_id,
+                    'balance_after': org_bal, # In a real ledger, calculate based on Account balance
+                }
+            )
+
+            # Update Order Status
+            if order.status != 'paid':
+                order.status = 'paid'
+                order.save(update_fields=['status'])
+            
+            # Update the M-Pesa Account balance if you have one defined
+            mpesa_account = Account.objects.filter(account_type='MPESA').first()
+            if mpesa_account:
+                mpesa_account.balance += float(amount)
+                mpesa_account.save()
 
     # to do: integrate with models (use transaction_id / BillRefNumber etc.)
-    return JsonResponse({"ResultCode": 0, "ResultDesc": "Success"})
+            return JsonResponse({"ResultCode": 0, "ResultDesc": "Success"})
+
+    except Order.DoesNotExist:
+        print(f"Order {order_id} not found for M-Pesa Trans {trans_id}")
+        # Even if order isn't found, we often return Success to M-Pesa to stop retries,
+        # but log it for manual reconciliation.
+        return JsonResponse({"ResultCode": 0, "ResultDesc": "Order not found"})
+    except Exception as e:
+        print(f"Error processing M-Pesa confirmation: {str(e)}")
+        return JsonResponse({"ResultCode": 1, "ResultDesc": "Internal Error"}, status=500)
 
 @csrf_exempt
 @api_view(['POST'])

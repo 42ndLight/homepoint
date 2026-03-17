@@ -1,6 +1,5 @@
 #services.py
 
-# payments/services.py
 from django.db import transaction as db_transaction
 from django.db.models import F
 from .models import (
@@ -9,11 +8,6 @@ from .models import (
     CashTransaction, ExpenseTransaction,
     DepositWithdrawal,
 )
-
-
-# ─────────────────────────────────────────────
-# CORE: reusable engine — never call directly
-# ─────────────────────────────────────────────
 
 def _debit_account(account, amount):
     """Take money OUT of an account. Raises if insufficient funds."""
@@ -52,10 +46,6 @@ def _build_transaction(model_class, account, user, movement, tx_type, amount, ex
         **extra_fields,
     )
 
-
-# ─────────────────────────────────────────────
-# PUBLIC SERVICES
-# ─────────────────────────────────────────────
 
 @db_transaction.atomic
 def record_cash_sale(user, order, amount, receipt_number='', notes=''):
