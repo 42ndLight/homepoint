@@ -94,11 +94,7 @@ class CashRecordSerializer(serializers.ModelSerializer):
         if t_type == 'SALE' and order and amount < order.total_amount:
             raise serializers.ValidationError(f"Amount {amount} is less than Order total {order.total_amount}")
 
-        return data
-
-
-
-   
+        return data   
 
     def create(self, validated_data):
         # This is usually wrapped in a view/service with @transaction.atomic

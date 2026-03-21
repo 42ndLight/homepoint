@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from decimal import Decimal
 import json
+from payments.models import Account
+
 
 User = get_user_model()
 
@@ -103,6 +105,12 @@ class DailySalesSnapshot(models.Model):
     def __str__(self):
         return f"Sales Snapshot - {self.date}"
 
+class ReportHistory(models.Model):
+    REPORT_TYPES = [('X', 'X-Report'), ('Z', 'Z-Report')]
+    
+    report_type = models.CharField(max_length=1, choices=REPORT_TYPES)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    data = models.JSONField()
 
 class ReportSchedule(models.Model):
     """
@@ -159,7 +167,7 @@ class AccountReconciliation(models.Model):
     ]
     
     reconciliation_type = models.CharField(max_length=20, choices=RECONCILIATION_TYPES)
-    account = models.ForeignKey('Account', on_delete=models.CASCADE, related_name='reconciliations')
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='reconciliations')
     
     # Date range
     start_date = models.DateTimeField()

@@ -92,7 +92,7 @@ class CashTransaction(Transaction):
         verbose_name = "Cash Transaction"    
 
     def __str__(self):
-        return f"Cash {self.transaction.movement_type} – {self.transaction.amount}"
+        return f"Cash {self.movement_type} – {self.amount}"
 
 
 class SaleTransaction(Transaction):
