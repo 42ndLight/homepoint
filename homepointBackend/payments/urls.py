@@ -1,4 +1,6 @@
-from .views import mpesa_confirmation_url, mpesa_validation, CashTransactionCreateView, TransactionHistoryListView
+from payments.views.mpesa_transactions_view import mpesa_confirmation_url, mpesa_validation
+from payments.views.cash_transactions_view import CashTransactionCreateView
+from payments.views.transactions_views import TransactionHistoryListView
 from django.urls import path
 
 app_name = 'payments'

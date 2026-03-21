@@ -31,7 +31,7 @@ class DailySalesReport:
         now = timezone.now()
         if report_type == 'X':
         # Find the last Z-Report generated
-            last_z = ReportHistory.objects.filter(report_type='Z').order_factory('-generated_at').first()
+            last_z = ReportHistory.objects.filter(report_type='Z').latest('generated_at')
         
         # Start from last Z timestamp, or midnight if no Z exists
             if last_z:
@@ -55,10 +55,10 @@ class DailySalesReport:
         # Aggregate data
         summary = orders.aggregate(
             total_orders=Count('id'),
-            completed_orders=Count('id', filter=Q(status='COMPLETED')),
-            pending_orders=Count('id', filter=Q(status='PENDING')),
-            cancelled_orders=Count('id', filter=Q(status='CANCELLED')),
-            total_revenue=Sum('total_amount', filter=Q(status='COMPLETED')) or Decimal('0'),
+            completed_orders=Count('id', filter=Q(status='delivered')),
+            pending_orders=Count('id', filter=Q(status='pending')),
+            cancelled_orders=Count('id', filter=Q(status='cancelled')),
+            total_revenue=Sum('total_amount', filter=Q(status='paid')) or Decimal('0'),
             
         )
         
@@ -88,8 +88,10 @@ class DailySalesReport:
         mpesa_account = Account.objects.filter(account_type='MPESA').first()
         
         report_data = {
-            'date': date.isoformat() if date else now.date().isoformat(),
             'report_type': report_type,
+            'generated_at': now.isoformat(),
+            'period_start': start_datetime,
+            'period_end': end_datetime,
             'summary': summary,
             'payment_breakdown': {
                 'mpesa': mpesa_data,

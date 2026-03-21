@@ -132,18 +132,21 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
-  const completeCashPayment = async (orderId, amount = '') => {
+  const completeCashPayment = async (order_id, amount = '', transaction_type='') => {
     loading.value = true
     error.value = null
 
     try {
       const response = await api.post(`/payments/cash/`, {
-        orderId,
+        order_id,
         amount,
+        transaction_type,
       })
 
       // Update order in current and pending lists
-      updateOrderInLists(response.order)
+      if (response.order_id) {
+          updateOrderInLists({ id: response.order_id, ...response });
+      }
 
       return {
         success: true,

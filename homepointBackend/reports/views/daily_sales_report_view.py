@@ -19,7 +19,7 @@ class DailySalesReportView(APIView):
     
     def get(self, request):
         date_str = request.query_params.get('date')
-        report_type = request.query_params.get('type', 'Z').upper()
+        report_type = request.query_params.get('report_type').upper()
 
         if report_type not in ['X', 'Z']:
             return Response(

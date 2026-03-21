@@ -14,145 +14,152 @@
         <h2 class="text-xl font-semibold">Orders</h2>
       </div>
 
-      <TabView v-model:activeIndex="activeTab" class="flex-1 flex flex-col [&_.p-tabview-panels]:flex-1 [&_.p-tabview-panel]:h-full [&_.p-tabview-panel]:flex [&_.p-tabview-panel]:flex-col">
-        <TabPanel header="Pending">
-          <div class="p-4 overflow-auto flex-1">
-            <div v-if="orderStore.loading" class="flex justify-center py-12">
-              <ProgressSpinner />
-            </div>
-            <div v-else-if="pendingOrders.length === 0" class="text-center py-12 text-gray-500">
-              <i class="pi pi-inbox text-4xl mb-3 opacity-50"></i>
-              <p>No pending orders</p>
-            </div>
-            <div v-else class="space-y-4">
-              <div
-                v-for="order in pendingOrders"
-                :key="order.id"
-                class="border border-gray-200 rounded-lg overflow-hidden"
-              >
-                <div class="p-4 border-b border-gray-100 bg-gray-50">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <h3 class="font-semibold text-gray-900">Order #{{ order.id }}</h3>
-                      <p class="text-sm text-gray-600">{{ formatDate(order.created_at) }}</p>
-                    </div>
-                    <Tag :severity="getStatusSeverity(order.status)" :value="formatStatus(order.status)" />
+      <Tabs value="Pending" class="flex-1 flex flex-col">
+          <TabList>
+              <Tab value="Pending">Pending</Tab>
+              <Tab value="Completed">Completed</Tab>
+              <Tab value="History">History</Tab>
+          </TabList>
+          <TabPanels>
+              <TabPanel value="Pending">
+                <div class="p-4 overflow-auto flex-1">
+                  <div v-if="orderStore.loading" class="flex      justify-center py-12">
+                    <ProgressSpinner />
                   </div>
-                </div>
-                <div class="p-4 space-y-3">
-                  <div class="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span class="text-gray-500">Phone:</span>
-                      <span class="ml-1 font-medium">{{ order.phone_number }}</span>
-                    </div>
-                    <div class="col-span-2">
-                      <span class="text-gray-500">Delivery:</span>
-                      <span class="ml-1 font-medium">{{ order.delivery_location }}</span>
-                    </div>
-                    <div class="col-span-2">
-                      <span class="text-gray-500">Total:</span>
-                      <span class="ml-1 font-semibold text-primary-600">KES {{ formatPrice(order.total_amount) }}</span>
-                    </div>
+                  <div v-else-if="pendingOrders.length === 0  "     class="text-center py-12  text-gray-500">
+                    <i class="pi pi-inbox text-4xl mb-3       opacity-50"></i>
+                    <p>No pending orders</p>
                   </div>
-                  <div v-if="order.items?.length" class="border-t border-gray-100 pt-3">
-                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Items</h4>
-                    <div class="space-y-1 text-sm">
-                      <div v-for="(item, i) in order.items" :key="i" class="flex justify-between">
-                        <span class="text-gray-600">{{ item.sku }} × {{ item.quantity }}</span>
-                        <span class="font-medium">KES {{ formatPrice((item.price || item.price_at_purchase) * item.quantity) }}</span>
+                  <div v-else class="space-y-4">
+                    <div
+                      v-for="order in pendingOrders"
+                      :key="order.id"
+                      class="border border-gray-200   rounded-lg    overflow-hidden"
+                    >
+                      <div class="p-4 border-b  border-gray-100    bg-gray-50">
+                        <div class="flex justify-between      items-start">
+                          <div>
+                            <h3 class="font-semibold      text-gray-900">Order #{{ order. id }}  </h3>
+                            <p class="text-sm text-gray-600"  >{{     formatDate(order. created_at) }}</p    >
+                          </div>
+                          <Tag :severity="getStatusSeverity(      order.status)" :value=" formatStatus(    order.status)"  />
+                        </div>
+                      </div>
+                      <div class="p-4 space-y-3">
+                        <div class="grid grid-cols-2 gap-2      text-sm">
+                          <div>
+                            <span class="text-gray-500">  Phone:</    span>
+                            <span class="ml-1 font-medium"> {{     order.phone_number }}</ span>
+                          </div>
+                          <div class="col-span-2">
+                            <span class="text-gray-500">      Delivery:</span>
+                            <span class="ml-1 font-medium"> {{     order.delivery_location   }}</span>
+                          </div>
+                          <div class="col-span-2">
+                            <span class="text-gray-500">  Total:</    span>
+                            <span class="ml-1 font-semibold      text-primary-600">KES {{  formatPrice    (order. total_amount) }}</span>
+                          </div>
+                        </div>
+                        <div v-if="order.items?.length"   class="   border-t border-gray-100  pt-3">
+                          <h4 class="text-xs font-semibold      text-gray-500 uppercase mb-2">  Items</   h4>
+                          <div class="space-y-1 text-sm">
+                            <div v-for="(item, i) in order. items    " :key="i" class="  flex    justify-between">
+                              <span class="text-gray-600">{{      item.sku }} × {{ item.  quantity    }}</span>
+                              <span class="font-medium">KES   {{    formatPrice((item.price   || item.  price_at_purchase)   * item.   quantity) }}</ span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="p-4 border-t  border-gray-100    flex flex-wrap  gap-2">
+                        <Button
+                          label="Check M-Pesa"
+                          icon="pi pi-sync"
+                          severity="info"
+                          size="small"
+                          outlined
+                          :loading="checkingOrderId ===   order.id    "
+                          @click="checkMpesaStatus(order.id)  "
+                        />
+                        <Button
+                          label="Complete M-Pesa"
+                          icon="pi pi-check"
+                          severity="success"
+                          size="small"
+                          @click="openMpesaDialog(order)"
+                        />
+                        <Button
+                          label="Complete Cash"
+                          icon="pi pi-money-bill"
+                          severity="secondary"
+                          size="small"
+                          outlined
+                          @click="openCashDialog(order)"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="p-4 border-t border-gray-100 flex flex-wrap gap-2">
-                  <Button
-                    label="Check M-Pesa"
-                    icon="pi pi-sync"
-                    severity="info"
-                    size="small"
-                    outlined
-                    :loading="checkingOrderId === order.id"
-                    @click="checkMpesaStatus(order.id)"
-                  />
-                  <Button
-                    label="Complete M-Pesa"
-                    icon="pi pi-check"
-                    severity="success"
-                    size="small"
-                    @click="openMpesaDialog(order)"
-                  />
-                  <Button
-                    label="Complete Cash"
-                    icon="pi pi-money-bill"
-                    severity="secondary"
-                    size="small"
-                    outlined
-                    @click="openCashDialog(order)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </TabPanel>
-
-        <TabPanel header="Completed">
-          <div class="p-4 overflow-auto">
-            <div v-if="orderStore.loading && activeTab === 1" class="flex justify-center py-12">
-              <ProgressSpinner />
-            </div>
-            <div v-else-if="completedOrders.length === 0" class="text-center py-12 text-gray-500">
-              <i class="pi pi-check-circle text-4xl mb-3 opacity-50"></i>
-              <p>No completed orders</p>
-            </div>
-            <div v-else class="space-y-3">
-              <div
-                v-for="order in completedOrders"
-                :key="order.id"
-                class="border border-gray-200 rounded-lg p-4"
-              >
-                <div class="flex justify-between items-center">
-                  <div>
-                    <span class="font-medium">#{{ order.id }}</span>
-                    <span class="text-sm text-gray-500 ml-2">{{ formatDate(order.created_at) }}</span>
+              </TabPanel>
+      
+              <TabPanel value="Completed">
+                <div class="p-4 overflow-auto">
+                  <div v-if="orderStore.loading && activeTab   ===     1" class="flex justify-center  py-12">
+                    <ProgressSpinner />
                   </div>
-                  <div class="text-right">
-                    <Tag :severity="getStatusSeverity(order.status)" :value="formatStatus(order.status)" />
-                    <div class="font-semibold text-sm mt-1">KES {{ formatPrice(order.total_amount) }}</div>
+                  <div v-else-if="completedOrders.length ===   0"     class="text-center py-12  text-gray-500">
+                    <i class="pi pi-check-circle text-4xl   mb-3    opacity-50"></i>
+                    <p>No completed orders</p>
+                  </div>
+                  <div v-else class="space-y-3">
+                    <div
+                      v-for="order in completedOrders"
+                      :key="order.id"
+                      class="border border-gray-200   rounded-lg    p-4"
+                    >
+                      <div class="flex justify-between      items-center">
+                        <div>
+                          <span class="font-medium">#{{   order.id     }}</span>
+                          <span class="text-sm text-gray-500      ml-2">{{ formatDate(order.  created_at)   }}</span>
+                        </div>
+                        <div class="text-right">
+                          <Tag :severity="getStatusSeverity(      order.status)" :value=" formatStatus(    order.status)"  />
+                          <div class="font-semibold text-sm   mt-1    ">KES {{ formatPrice(order  .   total_amount) }}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </TabPanel>
-
-        <TabPanel header="History">
-          <div class="p-4 overflow-auto">
-            <div v-if="orderStore.loading && activeTab === 2" class="flex justify-center py-12">
-              <ProgressSpinner />
-            </div>
-            <div v-else-if="orderStore.orderHistory.length === 0" class="text-center py-12 text-gray-500">
-              <i class="pi pi-history text-4xl mb-3 opacity-50"></i>
-              <p>No orders yet</p>
-            </div>
-            <div v-else class="space-y-2">
-              <div
-                v-for="order in orderStore.orderHistory"
-                :key="order.id"
-                class="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
-              >
-                <div>
-                  <span class="font-medium">#{{ order.id }}</span>
-                  <span class="text-sm text-gray-500 ml-2">{{ formatDate(order.created_at) }}</span>
+              </TabPanel>
+      
+              <TabPanel value="History">
+                <div class="p-4 overflow-auto">
+                  <div v-if="orderStore.loading && activeTab   ===     2" class="flex justify-center  py-12">
+                    <ProgressSpinner />
+                  </div>
+                  <div v-else-if="orderStore.orderHistory.  length     === 0" class="text-center  py-12    text-gray-500">
+                    <i class="pi pi-history text-4xl mb-3      opacity-50"></i>
+                    <p>No orders yet</p>
+                  </div>
+                  <div v-else class="space-y-2">
+                    <div
+                      v-for="order in orderStore. orderHistory"
+                      :key="order.id"
+                      class="flex justify-between   items-center    py-3 border-b   border-gray-100   last:border-0"
+                    >
+                      <div>
+                        <span class="font-medium">#{{ order.  id    }}</span>
+                        <span class="text-sm text-gray-500  ml-2"    >{{ formatDate(order. created_at) }}</   span>
+                      </div>
+                      <div class="text-right">
+                        <Tag :severity="getStatusSeverity(  order.    status)" :value=" formatStatus(order.    status)" />
+                        <div class="font-semibold text-sm   mt-1">    KES {{ formatPrice(order. total_amount)    }}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="text-right">
-                  <Tag :severity="getStatusSeverity(order.status)" :value="formatStatus(order.status)" />
-                  <div class="font-semibold text-sm mt-1">KES {{ formatPrice(order.total_amount) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </TabPanel>
-      </TabView>
+              </TabPanel>
+        </TabPanels>
+      </Tabs>
 
       <div class="p-4 border-t border-gray-200">
         <Button label="Refresh" icon="pi pi-refresh" outlined class="w-full" @click="refreshOrders" />
@@ -214,8 +221,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import Drawer from 'primevue/drawer'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
+import Tabs from 'primevue/tabs';
+import TabList from 'primevue/tablist';
+import Tab from 'primevue/tab';
+import TabPanels from 'primevue/tabpanels';
+import TabPanel from 'primevue/tabpanel';
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
@@ -343,9 +353,10 @@ const submitMpesaComplete = async () => {
 
 const submitCashComplete = async () => {
   const order = cashOrder.value
+  const transaction_type = 'SALES'
   if (order) {
     const amount = cashForm.value.amount != null ? String(cashForm.value.amount) : ''
-    const res = await orderStore.completeCashPayment(order.id, amount)
+    const res = await orderStore.completeCashPayment(order.id, amount, transaction_type)
     if (res.success) {
       toast.add({ severity: 'success', summary: 'Payment Recorded', detail: res.message, life: 3000 })
       cashDialogVisible.value = false
