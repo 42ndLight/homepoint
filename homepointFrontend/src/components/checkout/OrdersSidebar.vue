@@ -126,6 +126,23 @@
                           <div class="font-semibold text-sm   mt-1    ">KES {{ formatPrice(order  .   total_amount) }}</div>
                         </div>
                       </div>
+                      <div class="mt-3 flex gap-2">
+                        <Button
+                          label="Receipt"
+                          icon="pi pi-receipt"
+                          size="small"
+                          class="flex-1"
+                          @click="viewReceipt(order.id)"
+                        />
+                        <Button
+                          label="Reprint"
+                          icon="pi pi-print"
+                          severity="secondary"
+                          size="small"
+                          outlined
+                          @click="printReceipt(order.id)"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -220,6 +237,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import Drawer from 'primevue/drawer'
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
@@ -235,6 +253,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useOrderStore } from '@/stores/order'
 import { useToast } from 'primevue/usetoast'
 
+const router = useRouter()
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
 })
@@ -365,6 +384,15 @@ const submitCashComplete = async () => {
       toast.add({ severity: 'error', summary: 'Error', detail: res.error, life: 3000 })
     }
   }
+}
+
+const viewReceipt = (orderId) => {
+  router.push({ name: 'receipt', params: { orderId } })
+}
+
+const printReceipt = (orderId) => {
+  router.push({ name: 'receipt', params: { orderId } })
+  // In ReceiptView, the print dialog can be triggered automatically or by user
 }
 
 watch(activeTab, () => {

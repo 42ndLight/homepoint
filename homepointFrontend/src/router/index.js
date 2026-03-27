@@ -40,6 +40,13 @@ const router = createRouter({
       meta: { title: 'Product Catalog' },
     },
     {
+      path: '/receipt/:orderId',
+      name: 'receipt',
+      component: () => import('@/views/receipt/ReceiptView.vue'),
+      beforeEnter: requireRole(['staff', 'admin']),
+      meta: { title: 'Receipt' },
+    },
+    {
       path: '/',
       redirect: (to) => {
         // Redirect to login if not authenticated, otherwise to appropriate dashboard

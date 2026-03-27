@@ -1,0 +1,25 @@
+info:
+  name: report daily sales
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: http://127.0.0.1:8000/reports/daily-sales/?report_type=z&date=2026-03-19
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0MDU3MTI4LCJpYXQiOjE3NzQwNTM1MjgsImp0aSI6ImI0ZjcyNTE1MTI1ZjQ0ODE5NGFiYzMzMWVmMWU3YzBjIiwidXNlcl9pZCI6MTgsImVtYWlsIjoic3BlbmNlQGVtYWlsLmNvbSIsInVzZXJuYW1lIjoic3BlbmNlIiwiaXNfc3RhZmYiOmZhbHNlLCJpc19zdXBlcnVzZXIiOmZhbHNlfQ.FXdLcRJO9fMqOWKeCTETKm1MmBdalNFaV2JYID5qA-Y
+  params:
+    - name: report_type
+      value: z
+      type: query
+    - name: date
+      value: 2026-03-19
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

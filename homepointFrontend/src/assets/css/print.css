@@ -1,0 +1,171 @@
+/* Print styles for eTIMS receipts */
+
+@media print {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Courier New', monospace;
+    font-size: 11pt;
+    line-height: 1.4;
+    background: white;
+    color: black;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide UI elements during print */
+  nav,
+  .navbar,
+  .sidebar,
+  .footer,
+  .no-print,
+  .p-button,
+  .action-buttons,
+  button,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Receipt container */
+  .receipt-page {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 3mm !important;
+    page-break-after: always;
+    break-after: page;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+
+  /* Text styling */
+  h1,
+  h2,
+  h3 {
+    font-weight: bold;
+    margin-bottom: 2mm;
+  }
+
+  p {
+    margin-bottom: 1mm;
+  }
+
+  /* Table styling */
+  table,
+  .grid,
+  .table-row {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  table td,
+  table th,
+  .table-cell {
+    padding: 1mm;
+    text-align: left;
+    border: none;
+  }
+
+  table th {
+    border-bottom: 1pt solid black;
+    font-weight: bold;
+  }
+
+  /* Right-align numbers */
+  .text-right {
+    text-align: right;
+  }
+
+  /* Borders */
+  .border-b,
+  .border-t {
+    border-color: black !important;
+  }
+
+  /* Images (QR codes) */
+  img {
+    max-width: 100%;
+    height: auto;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Currency formatting */
+  .currency::before {
+    content: 'KES ';
+  }
+
+  /* Page breaks */
+  .page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* Prevent breaking within sections */
+  .receipt-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Typography */
+  .font-mono {
+    font-family: 'Courier New', monospace;
+  }
+
+  .text-sm {
+    font-size: 9pt;
+  }
+
+  .text-xs {
+    font-size: 8pt;
+  }
+
+  .font-semibold {
+    font-weight: bold;
+  }
+
+  .font-bold {
+    font-weight: bold;
+  }
+
+  /* Spacing for print */
+  .mb-4 {
+    margin-bottom: 3mm;
+  }
+
+  .mb-2 {
+    margin-bottom: 1.5mm;
+  }
+
+  .pb-4 {
+    padding-bottom: 3mm;
+  }
+
+  .pb-2 {
+    padding-bottom: 1.5mm;
+  }
+
+  .pt-4 {
+    padding-top: 3mm;
+  }
+
+  .pt-2 {
+    padding-top: 1.5mm;
+  }
+}
+
+/* Screen styles - hide print-only elements */
+@media screen {
+  .print-only {
+    display: none;
+  }
+}
