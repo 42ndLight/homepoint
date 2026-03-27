@@ -5,7 +5,7 @@
       <div class="mb-6 flex items-center justify-between">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">Receipt</h1>
-          <p class="text-gray-600 mt-1">Order #{{ orderId }}</p>
+          <p class="text-gray-600 mt-1" v-if="orderId">Order #{{ orderId }}</p>
         </div>
         <div class="flex gap-3">
           <PButton
@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import PButton from 'primevue/button'
@@ -89,54 +89,48 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Toast from 'primevue/toast'
 import ETIMSReceipt from '@/components/receipt/ETIMSReceipt.vue'
 import { formatReceiptData } from '@/utils/receiptFormatter'
+import { useOrderStore } from '@/stores/order'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const orderStore = useOrderStore()
 
-const orderId = ref(null)
-const order = ref(null)
-const paymentMethod = ref('M-Pesa')
-const loading = ref(false)
-const error = ref(null)
 const downloading = ref(false)
 
-onMounted(() => {
-  orderId.value = route.params.orderId || route.query.orderId
+const orderId = computed(() => route.params.orderId || route.query.orderId)
+const order = computed(() => orderStore.currentOrder)
+const loading = computed(() => orderStore.loading)
+const error = computed(() => orderStore.error)
+const paymentMethod = computed(() => 
+  order.value?.payment_method === 'cash' ? 'Cash' : 'M-Pesa'
+)
+
+onMounted(async () => {
   if (orderId.value) {
-    fetchOrder()
+    const result = await orderStore.fetchOrder(orderId.value)
+    if (!result.success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: result.error || 'Failed to load receipt',
+        life: 5000,
+      })
+    }
   }
 })
 
 const fetchOrder = async () => {
-  loading.value = true
-  error.value = null
-
-  try {
-    const response = await fetch(`/orders/orders/${orderId.value}/`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order: ${response.status}`)
+  if (orderId.value) {
+    const result = await orderStore.fetchOrder(orderId.value)
+    if (!result.success) {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: result.error || 'Failed to load receipt',
+        life: 5000,
+      })
     }
-
-    order.value = await response.json()
-    paymentMethod.value =
-      order.value.payment_method === 'cash' ? 'Cash' : 'M-Pesa'
-  } catch (err) {
-    console.error('Error fetching order:', err)
-    error.value = err.message || 'Failed to load receipt'
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: error.value,
-      life: 5000,
-    })
-  } finally {
-    loading.value = false
   }
 }
 
