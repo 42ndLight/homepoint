@@ -3,88 +3,154 @@
     <!-- Header -->
     <div class="mb-6">
       <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-      <p class="text-gray-600 mt-1">Sales Analytics & Reports</p>
+      <p class="text-gray-600 mt-1">Manage store operations, sales, staff, and inventory</p>
     </div>
 
-    <!-- Date Range Filter -->
-    <DateRangeFilter @filter-change="handleFilterChange" />
+    <!-- Tabs Container -->
+    <TabView>
+      <!-- Sales & Reporting Tab -->
+      <TabPanel header="Sales & Reports" leftIcon="pi pi-chart-bar">
+        <div class="p-4">
+          <!-- Date Range Filter -->
+          <DateRangeFilter @filter-change="handleFilterChange" />
 
-    <!-- Loading & Error States -->
-    <div v-if="isLoading" class="bg-white rounded-lg shadow p-8 text-center">
-      <div class="inline-block">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-      <p class="text-gray-600 mt-4">Loading analytics data...</p>
-    </div>
+          <!-- Loading & Error States -->
+          <div v-if="isLoading" class="bg-white rounded-lg shadow p-8 text-center">
+            <div class="inline-block">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+            <p class="text-gray-600 mt-4">Loading analytics data...</p>
+          </div>
 
-    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-      <p class="text-red-800 font-semibold">Error Loading Data</p>
-      <p class="text-red-700 text-sm mt-1">{{ error }}</p>
-      <button
-        @click="loadAnalytics"
-        class="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
-      >
-        Retry
-      </button>
-    </div>
+          <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p class="text-red-800 font-semibold">Error Loading Data</p>
+            <p class="text-red-700 text-sm mt-1">{{ error }}</p>
+            <button
+              @click="loadAnalytics"
+              class="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+            >
+              Retry
+            </button>
+          </div>
 
-    <div v-else>
-      <!-- Summary Cards -->
-      <SalesSummary :summary="analyticsData.summary" />
+          <div v-else>
+            <!-- Summary Cards -->
+            <SalesSummary :summary="analyticsData.summary" />
 
-      <!-- Charts Section -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Revenue Chart -->
-        <SalesChart :daily-data="analyticsData.daily_revenue" />
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Revenue Chart -->
+              <SalesChart :daily-data="analyticsData.daily_revenue" />
 
-        <!-- Top Products Chart -->
-        <ProductSalesChart :top-products="analyticsData.top_products" />
-      </div>
+              <!-- Top Products Chart -->
+              <ProductSalesChart :top-products="analyticsData.top_products" />
+            </div>
 
-      <!-- Top Products Table (optional detailed view) -->
-      <div v-if="analyticsData.top_products.length > 0" class="bg-white rounded-lg shadow p-6 mt-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Top Products Detailed</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200">
-                <th class="text-left py-3 px-4 font-semibold text-gray-700">Rank</th>
-                <th class="text-left py-3 px-4 font-semibold text-gray-700">Product Name</th>
-                <th class="text-left py-3 px-4 font-semibold text-gray-700">SKU</th>
-                <th class="text-right py-3 px-4 font-semibold text-gray-700">Units Sold</th>
-                <th class="text-right py-3 px-4 font-semibold text-gray-700">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(product, index) in analyticsData.top_products"
-                :key="index"
-                class="border-b border-gray-100 hover:bg-gray-50"
-              >
-                <td class="py-3 px-4">
-                  <span
-                    class="inline-block bg-blue-100 text-blue-800 rounded-full w-6 h-6 text-center font-semibold text-xs"
-                  >
-                    {{ index + 1 }}
-                  </span>
-                </td>
-                <td class="py-3 px-4">{{ product.product_name }}</td>
-                <td class="py-3 px-4 text-gray-600">{{ product.sku }}</td>
-                <td class="py-3 px-4 text-right font-semibold">{{ product.quantity }}</td>
-                <td class="py-3 px-4 text-right font-semibold text-green-600">
-                  {{ formatCurrency(product.revenue) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            <!-- Top Products Table (optional detailed view) -->
+            <div v-if="analyticsData.top_products.length > 0" class="bg-white rounded-lg shadow p-6 mt-6">
+              <h2 class="text-xl font-bold text-gray-800 mb-4">Top Products Detailed</h2>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-gray-200">
+                      <th class="text-left py-3 px-4 font-semibold text-gray-700">Rank</th>
+                      <th class="text-left py-3 px-4 font-semibold text-gray-700">Product Name</th>
+                      <th class="text-left py-3 px-4 font-semibold text-gray-700">SKU</th>
+                      <th class="text-right py-3 px-4 font-semibold text-gray-700">Units Sold</th>
+                      <th class="text-right py-3 px-4 font-semibold text-gray-700">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(product, index) in analyticsData.top_products"
+                      :key="index"
+                      class="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <td class="py-3 px-4">
+                        <span
+                          class="inline-block bg-blue-100 text-blue-800 rounded-full w-6 h-6 text-center font-semibold text-xs"
+                        >
+                          {{ index + 1 }}
+                        </span>
+                      </td>
+                      <td class="py-3 px-4">{{ product.product_name }}</td>
+                      <td class="py-3 px-4 text-gray-600">{{ product.sku }}</td>
+                      <td class="py-3 px-4 text-right font-semibold">{{ product.quantity }}</td>
+                      <td class="py-3 px-4 text-right font-semibold text-green-600">
+                        {{ formatCurrency(product.revenue) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </TabPanel>
+
+      <!-- Staff Management Tab -->
+      <TabPanel header="Staff Management" leftIcon="pi pi-users">
+        <div class="p-4">
+          <div class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+            <p class="text-blue-800 font-semibold">👥 Staff Management Module</p>
+            <p class="text-blue-700 text-sm mt-2">
+              Manage staff accounts, roles, and permissions. Features coming soon:
+            </p>
+            <ul class="text-blue-700 text-sm mt-2 ml-4 list-disc">
+              <li>Create/edit staff accounts</li>
+              <li>Assign roles and permissions</li>
+              <li>Track staff performance</li>
+              <li>Manage shifts and schedules</li>
+            </ul>
+          </div>
+        </div>
+      </TabPanel>
+
+      <!-- Inventory Control Tab -->
+      <TabPanel header="Inventory Control" leftIcon="pi pi-box">
+        <div class="p-4">
+          <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded">
+            <p class="text-purple-800 font-semibold">📦 Inventory Control Module</p>
+            <p class="text-purple-700 text-sm mt-2">
+              Manage product inventory and stock levels. Features coming soon:
+            </p>
+            <ul class="text-purple-700 text-sm mt-2 ml-4 list-disc">
+              <li>View all products and stock levels</li>
+              <li>Adjust stock quantities (Staff limited, Admin full control)</li>
+              <li>Set reorder points and alerts</li>
+              <li>Track inventory movements</li>
+              <li>Generate stock reports</li>
+            </ul>
+          </div>
+        </div>
+      </TabPanel>
+
+      <!-- Store Details Tab -->
+      <TabPanel header="Store Details" leftIcon="pi pi-cog">
+        <div class="p-4">
+          <div class="bg-amber-50 border-l-4 border-amber-600 p-4 rounded">
+            <p class="text-amber-800 font-semibold">⚙️ Store Details & Settings</p>
+            <p class="text-amber-700 text-sm mt-2">
+              Configure store information and system settings. Features coming soon:
+            </p>
+            <ul class="text-amber-700 text-sm mt-2 ml-4 list-disc">
+              <li>Store information (name, address, phone)</li>
+              <li>Tax configuration (TIN, VAT rates)</li>
+              <li>Currency and locale settings</li>
+              <li>System preferences and defaults</li>
+              <li>Backup and data management</li>
+            </ul>
+          </div>
+        </div>
+      </TabPanel>
+    </TabView>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
 import DateRangeFilter from '@/components/admin/DateRangeFilter.vue'
 import SalesSummary from '@/components/admin/SalesSummary.vue'
 import SalesChart from '@/components/admin/SalesChart.vue'
@@ -166,4 +232,3 @@ onMounted(() => {
   // Initial load will be triggered by DateRangeFilter's default initialization
 })
 </script>
-
