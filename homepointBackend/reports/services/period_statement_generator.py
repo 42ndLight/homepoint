@@ -49,9 +49,9 @@ class PeriodGenerator:
         # Overall summary
         summary = orders.aggregate(
             total_orders=Count('id'),
-            completed_orders=Count('id', filter=Q(status='COMPLETED')),
-            total_revenue=Sum('total_amount', filter=Q(status='COMPLETED')) or Decimal('0'),
-            avg_order_value=Avg('total_amount', filter=Q(status='COMPLETED')) or Decimal('0'),
+            completed_orders=Count('id', filter=Q(status='paid')),
+            total_revenue=Sum('total_amount', filter=Q(status='paid')) or Decimal('0'),
+            avg_order_value=Avg('total_amount', filter=Q(status='paid')) or Decimal('0'),
         )
         
         # Ensure total_revenue is never None
@@ -70,7 +70,7 @@ class PeriodGenerator:
             day_orders = orders.filter(
                 created_at__gte=day_start,
                 created_at__lte=day_end,
-                status='COMPLETED'
+                status='paid'
             )
             
             day_summary = day_orders.aggregate(
@@ -113,7 +113,7 @@ class PeriodGenerator:
             start_date=start_date,
             end_date=end_date,
             generated_by=user,
-            status='COMPLETED',
+            status='paid',
             total_revenue=total_revenue,
             total_transactions=total_transactions,
             data={

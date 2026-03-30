@@ -100,7 +100,7 @@ const analyticsData = reactive({
   summary: {
     total_revenue: '0',
     total_orders: 0,
-    average_order_value: '0',
+    avg_order_value: '0',
     total_mpesa: '0',
     total_cash: '0',
   },

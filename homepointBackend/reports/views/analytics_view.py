@@ -4,9 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from reports.models import DailySalesSnapshot
 from reports.services.analytics_service import AnalyticsService
+from reports.services.period_statement_generator import PeriodGenerator
 
 
 class AnalyticsView(APIView):
@@ -14,7 +15,7 @@ class AnalyticsView(APIView):
     GET /api/reports/analytics/?start_date=2024-03-20&end_date=2024-03-27
     
     Returns aggregated sales analytics data including:
-    - Daily revenue breakdown
+    - Daily revenue breakdown (from PeriodGenerator)
     - Top selling products
     - Summary metrics
     """
@@ -58,29 +59,39 @@ class AnalyticsView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Fetch daily sales snapshots
-            daily_snapshots = DailySalesSnapshot.objects.filter(
-                date__gte=start_date,
-                date__lte=end_date
-            ).order_by('date')
+            # Use PeriodGenerator to get comprehensive report data
+            period_report = PeriodGenerator.generate_period_sales_report(start_date, end_date)
 
-            # Convert to serializable format
+            # Extract data from nested structure
+            data_container = period_report.get('data', {})
+            
+            # Transform daily breakdown to match dashboard format
+            period_daily = data_container.get('daily_breakdown', [])
             daily_revenue = []
-            for snapshot in daily_snapshots:
+            
+            for day in period_daily:
                 daily_revenue.append({
-                    'date': snapshot.date.isoformat(),
-                    'total_sales': str(snapshot.total_sales),
-                    'total_orders': snapshot.total_orders,
-                    'completed_orders': snapshot.completed_orders,
-                    'cancelled_orders': snapshot.cancelled_orders,
-                    'mpesa_sales': str(snapshot.mpesa_sales),
-                    'cash_sales': str(snapshot.cash_sales),
-                    'mpesa_count': snapshot.mpesa_count,
-                    'cash_count': snapshot.cash_count,
-                    'total_vat': str(snapshot.total_vat),
-                    'cash_balance': str(snapshot.cash_balance),
-                    'mpesa_balance': str(snapshot.mpesa_balance),
+                    'date': day.get('date'),
+                    'total_sales': day.get('total', '0'),
+                    'total_orders': day.get('count', 0),
+                    'mpesa_sales': '0',
+                    'cash_sales': '0',
+                    'mpesa_count': 0,
+                    'cash_count': 0,
                 })
+            
+            # Extract payment breakdown
+            payment_breakdown = data_container.get('payment_breakdown', {})
+
+            # Extract and format summary for dashboard
+            period_summary = data_container.get('summary', {})
+            summary = {
+                'total_revenue': str(period_summary.get('total_revenue', '0')),
+                'total_orders': period_summary.get('total_orders', 0),
+                'average_order_value': str(period_summary.get('avg_order_value', '0')),
+                'total_mpesa': str(payment_breakdown.get('mpesa', {}).get('mpesa_sales', '0')),
+                'total_cash': str(payment_breakdown.get('cash', {}).get('cash_sales', '0')),
+            }
 
             # Get top products
             start_datetime = timezone.make_aware(
@@ -93,10 +104,8 @@ class AnalyticsView(APIView):
                 start_datetime, 
                 end_datetime, 
                 limit
-            )
+            )         
 
-            # Calculate summary metrics
-            summary = AnalyticsService.calculate_summary_metrics(daily_revenue)
 
             return Response({
                 'success': True,
@@ -114,3 +123,4 @@ class AnalyticsView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
