@@ -1,4 +1,5 @@
-from django.db.models import Sum, Count, F
+from django.db.models import Sum, Count, F, DecimalField
+from django.db.models.functions import Cast
 from django.utils import timezone
 from datetime import timedelta, datetime
 from decimal import Decimal
@@ -11,39 +12,41 @@ class AnalyticsService:
 
     @staticmethod
     def get_top_products(start_date, end_date, limit=10):
-        """
-        Get top N products by quantity sold within date range
-        
-        Args:
-            start_date: datetime object for start of range
-            end_date: datetime object for end of range
-            limit: number of top products to return (default 10)
-        
-        Returns:
-            List of dicts with product info and sales metrics
-        """
-        top_products = OrderItem.objects.filter(
-            order__created_at__gte=start_date,
-            order__created_at__lte=end_date,
-            order__status__in=['paid', 'delivered']  # Only completed/paid orders
-        ).values(
-            'variant__sku',
-            'variant__product__name',
-        ).annotate(
-            quantity=Sum('quantity'),
-            revenue=Sum(F('price_at_purchase') * F('quantity'))
-        ).order_by('-quantity')[:limit]
+        # 1. Build the filter once to keep it DRY
+        filters = {
+            'order__created_at__gte': start_date,
+            'order__created_at__lte': end_date,
+            'order__status__in': ['paid', 'delivered']
+        }
 
-        result = []
-        for item in top_products:
-            result.append({
+        # 2. Use F expression to calculate row-level revenue, then Sum it
+        top_products = (
+            OrderItem.objects.filter(**filters)
+            .values(
+                'variant__sku',
+                'variant__product__name',
+            )
+            .annotate(
+                total_quantity=Sum('quantity'),
+                # Multiply price * qty for each row, then sum them up
+                total_revenue=Sum(
+                    F('price_at_purchase') * F('quantity'), 
+                    output_field=DecimalField()
+                )
+            )
+            .order_by('-total_quantity')[:limit]
+        )
+
+        # 3. Format the results (No extra queries needed!)
+        return [
+            {
                 'product_name': item['variant__product__name'],
                 'sku': item['variant__sku'],
-                'quantity': item['quantity'],
-                'revenue': str(item['revenue'] or 0)
-            })
-
-        return result
+                'quantity': item['total_quantity'],
+                'revenue': str(item['total_revenue'])
+            } 
+            for item in top_products
+        ]
 
     @staticmethod
     def calculate_summary_metrics(daily_data):
@@ -99,3 +102,4 @@ class AnalyticsService:
         elif isinstance(data, (datetime, timezone.datetime)):
             return data.isoformat()
         return data
+

@@ -49,10 +49,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import AnalyticsService from '@/services/analyticsService'
 
-defineEmits(['filter-change'])
+const emit = defineEmits(['filter-change'])
 
 const customStartDate = ref('')
 const customEndDate = ref('')
@@ -107,15 +107,12 @@ const applyCustomDateRange = () => {
   })
 }
 
-// Initialize with last 7 days
-const initializeDefaultRange = () => {
+// Initialize with last 7 days on mount
+onMounted(() => {
   const dateRange = AnalyticsService.getDateRangeLastDays(7)
   customStartDate.value = dateRange.startDate
   customEndDate.value = dateRange.endDate
   currentFilter.value = 'Last 7 Days'
   emit('filter-change', dateRange)
-}
-
-// Initialize on mount
-initializeDefaultRange()
+})
 </script>

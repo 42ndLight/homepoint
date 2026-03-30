@@ -1,10 +1,12 @@
 # period_statement.py
 from orders.models import Order
 from reports.models import Report
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
-from datetime import date, datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
+from payments.models import CashTransaction, MpesaTransaction
+
 
 
 
@@ -27,6 +29,18 @@ class PeriodGenerator:
         """
         Generate sales report for a date range
         """
+        # Convert to datetime for filtering if needed
+        if isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date)
+        if isinstance(end_date, str):
+            end_date = datetime.fromisoformat(end_date)
+        
+        # Ensure we have datetime objects
+        if not isinstance(start_date, datetime):
+            start_date = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+        if not isinstance(end_date, datetime):
+            end_date = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
+        
         orders = Order.objects.filter(
             created_at__gte=start_date,
             created_at__lte=end_date
@@ -37,9 +51,12 @@ class PeriodGenerator:
             total_orders=Count('id'),
             completed_orders=Count('id', filter=Q(status='COMPLETED')),
             total_revenue=Sum('total_amount', filter=Q(status='COMPLETED')) or Decimal('0'),
-            total_vat=Sum('vat', filter=Q(status='COMPLETED')) or Decimal('0'),
             avg_order_value=Avg('total_amount', filter=Q(status='COMPLETED')) or Decimal('0'),
         )
+        
+        # Ensure total_revenue is never None
+        total_revenue = summary['total_revenue'] or Decimal('0')
+        total_transactions = summary['total_orders'] or 0
         
         # Daily breakdown
         daily_sales = []
@@ -70,26 +87,53 @@ class PeriodGenerator:
             current_date += timedelta(days=1)
         
         # Payment method breakdown
-        '''payment_breakdown = orders.filter(status='COMPLETED').values('payment_method').annotate(
-            total=Sum('total_amount'),
-            count=Count('id')
-        )'''
+        mpesa_data = MpesaTransaction.objects.filter(
+            timestamp__gte=start_date,
+            timestamp__lte=end_date,             
+            movement_type='IN',
+        ).distinct().aggregate(
+            mpesa_sales=Sum('amount') or Decimal('0'),
+            mpesa_count=Count('id')
+        )
+
+        # Cash breakdown: Filter orders that have at least one CashTransaction
+        cash_data = CashTransaction.objects.filter(
+            timestamp__gte=start_date,
+            timestamp__lte=end_date,             
+            movement_type='IN',
+        ).distinct().aggregate(
+            cash_sales=Sum('amount') or Decimal('0'),
+            cash_count=Count('id')
+        )
         
         # Create and save report
         report = Report.objects.create(
             report_type='PERIOD_SALES',
-            title=f'Sales Report: {start_date.date()} to {end_date.date()}',
+            title=f'Sales Report: {start_date} to {end_date}',
             start_date=start_date,
             end_date=end_date,
             generated_by=user,
             status='COMPLETED',
-            total_revenue=summary['total_revenue'],
-            total_transactions=summary['total_orders'],
+            total_revenue=total_revenue,
+            total_transactions=total_transactions,
             data={
-                'summary': summary,
+                'summary': cls._make_serializable(summary),
                 'daily_breakdown': daily_sales,
-                'payment_breakdown': list(payment_breakdown),
+                'payment_breakdown': {
+                    'mpesa': cls._make_serializable(mpesa_data),
+                    'cash': cls._make_serializable(cash_data),
+                },
             }
         )
         
-        return cls._make_serializable(report)
+        # Return serialized report data instead of Report object
+        return cls._make_serializable({
+            'id': report.id,
+            'report_type': report.report_type,
+            'title': report.title,
+            'start_date': report.start_date.isoformat(),
+            'end_date': report.end_date.isoformat(),
+            'total_revenue': str(report.total_revenue),
+            'total_transactions': report.total_transactions,
+            'data': report.data,
+        })
