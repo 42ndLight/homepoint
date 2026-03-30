@@ -74,10 +74,10 @@ class AnalyticsView(APIView):
                     'date': day.get('date'),
                     'total_sales': day.get('total', '0'),
                     'total_orders': day.get('count', 0),
-                    'mpesa_sales': '0',
-                    'cash_sales': '0',
-                    'mpesa_count': 0,
-                    'cash_count': 0,
+                    'mpesa_sales': day.get('mpesa_sales', '0'),
+                    'cash_sales': day.get('cash_sales', '0'),
+                    'mpesa_count': day.get('mpesa_count', 0),
+                    'cash_count': day.get('cash_count', 0),
                 })
             
             # Extract payment breakdown

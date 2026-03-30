@@ -78,10 +78,33 @@ class PeriodGenerator:
                 count=Count('id')
             )
             
+            # Get daily M-Pesa and Cash breakdown
+            day_mpesa_data = MpesaTransaction.objects.filter(
+                timestamp__gte=day_start,
+                timestamp__lte=day_end,             
+                movement_type='IN',
+            ).distinct().aggregate(
+                mpesa_sales=Sum('amount') or Decimal('0'),
+                mpesa_count=Count('id')
+            )
+            
+            day_cash_data = CashTransaction.objects.filter(
+                timestamp__gte=day_start,
+                timestamp__lte=day_end,             
+                movement_type='IN',
+            ).distinct().aggregate(
+                cash_sales=Sum('amount') or Decimal('0'),
+                cash_count=Count('id')
+            )
+            
             daily_sales.append({
                 'date': current_date.isoformat(),
                 'total': str(day_summary['total']),
                 'count': day_summary['count'],
+                'mpesa_sales': str(day_mpesa_data['mpesa_sales']),
+                'cash_sales': str(day_cash_data['cash_sales']),
+                'mpesa_count': day_mpesa_data['mpesa_count'],
+                'cash_count': day_cash_data['cash_count'],
             })
             
             current_date += timedelta(days=1)
