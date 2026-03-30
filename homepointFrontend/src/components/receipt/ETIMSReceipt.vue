@@ -5,6 +5,7 @@
       <h1 class="font-bold text-lg tracking-wide">{{ storeInfo.name }}</h1>
       <p class="text-xs text-gray-700">{{ storeInfo.address }}</p>
       <p class="text-xs text-gray-700">TIN: {{ storeInfo.tin }}</p>
+      <p class="text-xs text-gray-700">PIN: {{ storeInfo.pin }}</p> 
       <p class="text-xs text-gray-700">{{ storeInfo.phone }}</p>
     </div>
 
@@ -42,24 +43,55 @@
           <div class="font-bold">
             {{ formatCurrency(item.quantity * item.price_at_purchase) }}
           </div>
+          <div class="col-span-4 text-right font-semibold">
+            {{ formatCurrency(item.quantity * item.price_at_purchase) }}{{ item.tax_designation || 'A' }}
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Totals Section -->
-    <div class="border-b border-gray-400 pb-4 mb-4">
-      <div class="flex justify-between text-xs mb-2">
-        <span>Subtotal:</span>
+    <div class="border-b border-dashed border-gray-400 pb-2 mb-2">
+      <div class="flex justify-between">
+        <span>SUB TOTAL:</span>
         <span>{{ formatCurrency(receiptData.subtotal) }}</span>
       </div>
-      <div class="flex justify-between text-xs mb-2 font-semibold">
+      <div class="flex justify-between font-bold">
         <span>VAT (16%):</span>
         <span>{{ formatCurrency(receiptData.vat) }}</span>
       </div>
-      <div class="flex justify-between font-bold text-sm border-t border-gray-300 pt-2">
+      <div class="flex justify-between font-bold text-sm border-t border-black pt-1">
         <span>TOTAL:</span>
         <span>{{ formatCurrency(receiptData.total) }}</span>
       </div>
+      <!-- MANDATORY ITEM COUNTER -->
+      <div class="flex justify-between mt-2 pt-1 border-t border-gray-200">
+        <span>ITEMS NUMBER:</span>
+        <span>{{ receiptData.items.length }}</span>
+      </div>
+    </div>
+
+    <!-- 3. MANDATORY TAX SUMMARY TABLE -->
+    <div class="text-[10px] mb-4">
+       <div class="grid grid-cols-4 font-bold border-b">
+         <span>Taxable</span><span>Tax</span><span>Rate</span><span>VAT</span>
+       </div>
+       <div class="grid grid-cols-4">
+         <span>{{ formatCurrency(receiptData.subtotal) }}</span>
+         <span>{{ formatCurrency(receiptData.vat) }}</span>
+         <span>16%</span>
+         <span>{{ formatCurrency(receiptData.vat) }}</span>
+       </div>
+    </div>
+
+    <!-- 4. SCU/TIS INFORMATION (FORMATTED WITH DASHES) -->
+    <div class="text-[10px] space-y-1 mb-4">
+      <p class="font-bold">SCU INFORMATION</p>
+      <p>Date: {{ receiptData.scuDate }} Time: {{ receiptData.scuTime }}</p>
+      <p>SCU ID: {{ receiptData.scuId }}</p>
+      <p>CU INVOICE NO: {{ receiptData.cuInvoiceNo }}</p>
+      <p>Internal Data: <span class="break-all">{{ formatWithDashes(receiptData.internalData) }}</span></p>
+      <p>Receipt Signature: <span class="break-all">{{ formatWithDashes(receiptData.signature) }}</span></p>
     </div>
 
     <!-- QR Code -->
@@ -107,6 +139,19 @@ const props = defineProps({
 const storeInfo = computed(() => getStoreInfo())
 const receiptData = computed(() => formatReceiptData(props.order))
 const qrCodeData = ref(null)
+const formatWithDashes = (str) => {
+  if (!str) return '';
+  return str.replace(/-/g, '').match(/.{1,4}/g).join('-');
+}
+const generateKRAQRCodeString = (data) => {
+  return `${data.date.replaceAll('-','')}` + 
+         `#${data.time.replaceAll(':','')}` + 
+         `#${data.scuId}` + 
+         `#${data.cuReceiptNumber}` + 
+         `#${data.internalData}` + 
+         `#${data.signature}`;
+};
+
 
 onMounted(async () => {
   qrCodeData.value = await generateQRCode(receiptData.value)
