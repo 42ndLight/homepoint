@@ -48,10 +48,9 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: (to) => {
-        // Redirect to login if not authenticated, otherwise to appropriate dashboard
-        return '/login'
-      },
+      name: 'landing',
+      component: () => import('@/views/landing/LandingPage.vue'),
+      meta: { title: 'Homepoint Hardware Store' },
     },
     {
       path: '/:pathMatch(.*)*',

@@ -41,9 +41,6 @@
           </div>
           
           <div class="font-bold">
-            {{ formatCurrency(item.quantity * item.price_at_purchase) }}
-          </div>
-          <div class="col-span-4 text-right font-semibold">
             {{ formatCurrency(item.quantity * item.price_at_purchase) }}{{ item.tax_designation || 'A' }}
           </div>
         </div>
@@ -73,25 +70,33 @@
 
     <!-- 3. MANDATORY TAX SUMMARY TABLE -->
     <div class="text-[10px] mb-4">
-       <div class="grid grid-cols-4 font-bold border-b">
-         <span>Taxable</span><span>Tax</span><span>Rate</span><span>VAT</span>
+       <div class="grid grid-cols-3 gap-2 font-bold border-b pb-1">
+         <span>Taxable Amount</span><span>Tax Rate</span><span>Tax Amount</span>
        </div>
-       <div class="grid grid-cols-4">
+       <div class="grid grid-cols-3 gap-2 pt-1">
          <span>{{ formatCurrency(receiptData.subtotal) }}</span>
-         <span>{{ formatCurrency(receiptData.vat) }}</span>
          <span>16%</span>
          <span>{{ formatCurrency(receiptData.vat) }}</span>
        </div>
     </div>
 
     <!-- 4. SCU/TIS INFORMATION (FORMATTED WITH DASHES) -->
-    <div class="text-[10px] space-y-1 mb-4">
+    <div v-if="receiptData.scuId" class="text-[10px] space-y-1 mb-4 border-t border-gray-200 pt-2">
       <p class="font-bold">SCU INFORMATION</p>
-      <p>Date: {{ receiptData.scuDate }} Time: {{ receiptData.scuTime }}</p>
-      <p>SCU ID: {{ receiptData.scuId }}</p>
-      <p>CU INVOICE NO: {{ receiptData.cuInvoiceNo }}</p>
-      <p>Internal Data: <span class="break-all">{{ formatWithDashes(receiptData.internalData) }}</span></p>
-      <p>Receipt Signature: <span class="break-all">{{ formatWithDashes(receiptData.signature) }}</span></p>
+      <div v-if="receiptData.scuDate" class="flex justify-between">
+        <span>Date:</span>
+        <span>{{ receiptData.scuDate }} {{ receiptData.scuTime }}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>SCU ID:</span>
+        <span>{{ receiptData.scuId }}</span>
+      </div>
+      <div v-if="receiptData.internalData" class="text-[9px]">
+        <p>Internal Data: <span class="break-all">{{ formatWithDashes(receiptData.internalData) }}</span></p>
+      </div>
+      <div v-if="receiptData.signature" class="text-[9px]">
+        <p>Receipt Signature: <span class="break-all">{{ formatWithDashes(receiptData.signature) }}</span></p>
+      </div>
     </div>
 
     <!-- QR Code -->
