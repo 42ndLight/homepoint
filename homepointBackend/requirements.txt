@@ -12,6 +12,7 @@ djangorestframework_simplejwt==5.5.1
 drf-yasg==1.21.12
 googleapis-common-protos==1.72.0
 gprof2dot==2025.4.14
+gunicorn==23.0.0
 httplib2==0.31.0
 idna==3.11
 inflection==0.5.1

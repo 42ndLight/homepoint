@@ -89,40 +89,13 @@
       </TabPanel>
 
       <!-- Staff Management Tab -->
-      <TabPanel header="Staff Management" leftIcon="pi pi-users">
-        <div class="p-4">
-          <div class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
-            <p class="text-blue-800 font-semibold">👥 Staff Management Module</p>
-            <p class="text-blue-700 text-sm mt-2">
-              Manage staff accounts, roles, and permissions. Features coming soon:
-            </p>
-            <ul class="text-blue-700 text-sm mt-2 ml-4 list-disc">
-              <li>Create/edit staff accounts</li>
-              <li>Assign roles and permissions</li>
-              <li>Track staff performance</li>
-              <li>Manage shifts and schedules</li>
-            </ul>
-          </div>
-        </div>
+      <TabPanel header="Transaction Logs" leftIcon="pi pi-receipt">
+        <TransactionLogsPanel />
       </TabPanel>
 
       <!-- Inventory Control Tab -->
       <TabPanel header="Inventory Control" leftIcon="pi pi-box">
-        <div class="p-4">
-          <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded">
-            <p class="text-purple-800 font-semibold">📦 Inventory Control Module</p>
-            <p class="text-purple-700 text-sm mt-2">
-              Manage product inventory and stock levels. Features coming soon:
-            </p>
-            <ul class="text-purple-700 text-sm mt-2 ml-4 list-disc">
-              <li>View all products and stock levels</li>
-              <li>Adjust stock quantities (Staff limited, Admin full control)</li>
-              <li>Set reorder points and alerts</li>
-              <li>Track inventory movements</li>
-              <li>Generate stock reports</li>
-            </ul>
-          </div>
-        </div>
+        <InventoryControlPanel />
       </TabPanel>
 
       <!-- Store Details Tab -->
@@ -156,6 +129,8 @@ import SalesSummary from '@/components/admin/SalesSummary.vue'
 import SalesChart from '@/components/admin/SalesChart.vue'
 import ProductSalesChart from '@/components/admin/ProductSalesChart.vue'
 import AnalyticsService from '@/services/analyticsService'
+import InventoryControlPanel from '@/components/admin/InventoryControlPanel.vue'
+import TransactionLogsPanel from '@/components/admin/TransactionLogsPanel.vue'
 
 const isLoading = ref(false)
 const error = ref(null)
