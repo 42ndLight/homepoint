@@ -14,7 +14,7 @@ class InventoryService {
       if (params.offset) queryParams.append('offset', params.offset)
 
       const queryString = queryParams.toString()
-      const endpoint = `/products/inventory/${queryString ? '?' + queryString : ''}`
+      const endpoint = `/products/inventory/`
 
       const data = await api.get(endpoint)
       return data
@@ -52,18 +52,19 @@ class InventoryService {
   /**
    * Update stock quantity for a specific inventory item
    * @param {number} inventoryId - Inventory item ID
-   * @param {number} quantity - New quantity value
+   * @param {number} changeAmount - New quantity value
+   *  @param {number} movementType
    * @param {string} notes - Optional notes about the update
    * @returns {Promise<Object>} Updated inventory data
    */
-  static async updateStock(inventoryId, quantity, notes = '') {
+  static async updateStock(inventoryId, changeAmount, movementType, reason = '') {
     try {
       const payload = {
-        quantity,
+        change_amount: changeAmount, // Matches backend key
+        movement_type: movementType, // 'IN' or 'OUT'
+        reason: reason
       }
-      if (notes) {
-        payload.notes = notes
-      }
+
 
       const data = await api.patch(`/products/inventory/${inventoryId}/`, payload)
       return data
@@ -98,6 +99,24 @@ class InventoryService {
     if (quantity === 0) return 'out-of-stock'
     if (quantity <= reorderPoint) return 'low-stock'
     return 'in-stock'
+  }
+
+  /**
+   * Format timestamp to readable date string
+   * @param {string} timestamp - ISO timestamp string
+   * @returns {string} Formatted date string
+   */
+  static formatTimestamp(timestamp) {
+    if (!timestamp) return 'N/A'
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
   }
 
   /**

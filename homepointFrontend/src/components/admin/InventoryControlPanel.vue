@@ -1,20 +1,33 @@
 <template>
   <div class="p-4">
-    <!-- Header with Search -->
+    <!-- Header with Product Selection and Search -->
     <div class="mb-6">
       <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <div class="flex-1">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
+          <select
+            v-model="selectedProductId"
+            @change="loadInventory"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">-- Select a product --</option>
+            <option v-for="product in products" :key="product.id" :value="product.id">
+              {{ product.name }}
+            </option>
+          </select>
+        </div>
         <div class="flex-1">
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search by SKU or product name..."
+            placeholder="Search by SKU or variant..."
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             @input="debounceSearch"
           />
         </div>
         <button
           @click="loadInventory"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap h-10 mt-6"
         >
           <i class="pi pi-refresh" :class="{ 'animate-spin': isLoading }"></i>
           Refresh
@@ -54,42 +67,56 @@
         <template #empty>
           <div class="py-8 text-center text-gray-500">
             <i class="pi pi-inbox text-4xl mb-2"></i>
-            <p>No inventory items found</p>
+            <p>{{ selectedProductId ? 'No inventory items found' : 'Select a product to view inventory' }}</p>
           </div>
         </template>
 
-        <Column field="id" header="ID" :style="{ width: '60px' }" sortable>
+        <Column field="id" header="Variant ID" :style="{ width: '80px' }" sortable>
           <template #body="{ data }">
             <span class="text-sm font-medium">{{ data.id }}</span>
           </template>
         </Column>
 
-        <Column field="product_name" header="Product Name" sortable>
+        <Column field="sku" header="SKU" sortable>
           <template #body="{ data }">
             <div>
-              <p class="font-medium text-gray-900">{{ data.product_name }}</p>
-              <p class="text-xs text-gray-600">SKU: {{ data.sku }}</p>
+              <p class="font-medium text-gray-900">{{ data.sku }}</p>
+              <p class="text-xs text-gray-600" v-if="data.attributes">
+                {{ formatAttributes(data.attributes) }}
+              </p>
             </div>
           </template>
         </Column>
 
-        <Column field="quantity" header="Current Stock" :style="{ width: '120px' }">
+        <Column field="stock_quantity" header="Current Stock" :style="{ width: '120px' }">
           <template #body="{ data }">
             <div class="flex items-center gap-2">
-              <span class="font-semibold text-lg">{{ data.quantity }}</span>
+              <span class="font-semibold text-lg">{{ data.stock_quantity }}</span>
               <span
                 class="px-2 py-1 rounded text-xs font-semibold"
-                :class="getStatusClass(data.quantity)"
+                :class="getStatusClass(data.stock_quantity)"
               >
-                {{ getStatusLabel(data.quantity) }}
+                {{ getStatusLabel(data.stock_quantity) }}
               </span>
             </div>
           </template>
         </Column>
 
-        <Column field="reorder_point" header="Reorder Point" :style="{ width: '120px' }">
+        <Column field="stock_threshold" header="Reorder Point" :style="{ width: '120px' }">
           <template #body="{ data }">
-            <span class="text-sm">{{ data.reorder_point || 'N/A' }}</span>
+            <span class="text-sm">{{ data.stock_threshold || 'N/A' }}</span>
+          </template>
+        </Column>
+
+        <Column field="stock_last_updated" header="Last Updated" :style="{ width: '180px' }">
+          <template #body="{ data }">
+            <span class="text-sm text-gray-700">{{ formatLastUpdated(data.stock_last_updated) }}</span>
+          </template>
+        </Column>
+
+        <Column field="last_updated" header="Last Updated" :style="{ width: '180px' }">
+          <template #body="{ data }">
+            <span class="text-sm text-gray-700">{{ formatLastUpdated(data.last_updated) }}</span>
           </template>
         </Column>
 
@@ -122,24 +149,59 @@
       <template v-if="editingItem">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Product</label>
-            <p class="text-gray-900 font-medium">{{ editingItem.product_name }}</p>
-            <p class="text-xs text-gray-600">SKU: {{ editingItem.sku }}</p>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Variant</label>
+            <p class="text-gray-900 font-medium">{{ editingItem.sku }}</p>
+            <p class="text-xs text-gray-600" v-if="editingItem.attributes">
+              {{ formatAttributes(editingItem.attributes) }}
+            </p>
           </div>
 
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-2">Current Quantity</label>
-            <p class="text-lg font-bold text-gray-900">{{ editingItem.quantity }}</p>
+            <p class="text-lg font-bold text-gray-900">{{ editingItem.stock_quantity }}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">New Quantity</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Last Updated</label>
+            <p class="text-sm text-gray-700">{{ formatLastUpdated(editingItem.stock_last_updated) }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Movement Type</label>
+            <div class="flex gap-2">
+              <button
+                @click="movementType = 'IN'"
+                :class="[
+                  'flex-1 px-4 py-2 rounded font-semibold transition',
+                  movementType === 'IN'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ]"
+              >
+                <i class="pi pi-plus mr-2"></i>Stock In
+              </button>
+              <button
+                @click="movementType = 'OUT'"
+                :class="[
+                  'flex-1 px-4 py-2 rounded font-semibold transition',
+                  movementType === 'OUT'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ]"
+              >
+                <i class="pi pi-minus mr-2"></i>Stock Out
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Amount to {{ movementType === 'IN' ? 'Add' : 'Remove' }}</label>
             <input
               v-model.number="newQuantity"
               type="number"
               min="0"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter new quantity"
+              :placeholder="`Enter amount to ${movementType === 'IN' ? 'add' : 'remove'}`"
             />
           </div>
 
@@ -154,10 +216,14 @@
           </div>
 
           <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-800">
-            <p class="font-semibold mb-1">Quantity Change</p>
-            <p>
-              {{ editingItem.quantity }} → <span class="font-bold">{{ newQuantity !== null ? newQuantity : 'N/A' }}</span>
+            <p class="font-semibold mb-2">Quantity Change</p>
+            <p v-if="movementType === 'IN'" class="mb-1">
+              {{ editingItem.stock_quantity }} + {{ newQuantity || 0 }} = <span class="font-bold text-lg text-green-700">{{ (editingItem.stock_quantity || 0) + (newQuantity || 0) }}</span>
             </p>
+            <p v-else class="mb-1">
+              {{ editingItem.stock_quantity }} - {{ newQuantity || 0 }} = <span class="font-bold text-lg text-blue-700">{{ Math.max(0, (editingItem.stock_quantity || 0) - (newQuantity || 0)) }}</span>
+            </p>
+            <p class="text-xs text-gray-600 mt-1">{{ movementType === 'IN' ? 'Stock will increase' : 'Stock will decrease' }}</p>
           </div>
         </div>
       </template>
@@ -189,14 +255,17 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import InventoryService from '@/services/inventoryService'
+import { getProducts } from '@/services/dbService'
 
 const toast = useToast()
 
+const products = ref([])
 const inventory = ref([])
 const isLoading = ref(false)
 const isUpdating = ref(false)
 const error = ref(null)
 const searchQuery = ref('')
+const selectedProductId = ref('')
 const totalRecords = ref(0)
 const currentPage = ref(0)
 const pageSize = ref(10)
@@ -204,9 +273,10 @@ const pageSize = ref(10)
 const editDialogVisible = ref(false)
 const editingItem = ref(null)
 const newQuantity = ref(null)
+const movementType = ref('IN')
 const updateNotes = ref('')
 
-const canDelete = ref(false) // Set based on user permissions
+const canDelete = ref(false)
 
 let searchTimeout = null
 
@@ -218,27 +288,47 @@ const debounceSearch = () => {
   }, 300)
 }
 
+const formatAttributes = (attributes) => {
+  if (!attributes || typeof attributes !== 'object') return ''
+  return Object.values(attributes).join(' • ')
+}
+
+const formatLastUpdated = (timestamp) => {
+  return InventoryService.formatTimestamp(timestamp)
+}
+
 const loadInventory = async () => {
+  if (!selectedProductId.value) {
+    inventory.value = []
+    totalRecords.value = 0
+    return
+  }
+
   isLoading.value = true
   error.value = null
 
   try {
-    const response = await InventoryService.getInventory({
-      search: searchQuery.value,
-      limit: pageSize.value,
-      offset: currentPage.value * pageSize.value,
-    })
-
-    if (Array.isArray(response)) {
-      inventory.value = response
-      totalRecords.value = response.length
-    } else if (response.results) {
-      inventory.value = response.results
-      totalRecords.value = response.count || response.results.length
-    } else {
+    const productData = products.value.find(p => p.id === parseInt(selectedProductId.value))
+    if (!productData) {
+      error.value = 'Product not found'
       inventory.value = []
       totalRecords.value = 0
+      return
     }
+
+    const variants = productData.variants || []
+    let filtered = variants
+
+    if (searchQuery.value) {
+      const q = searchQuery.value.toLowerCase()
+      filtered = variants.filter(v => 
+        v.sku.toLowerCase().includes(q) ||
+        formatAttributes(v.attributes).toLowerCase().includes(q)
+      )
+    }
+
+    inventory.value = filtered
+    totalRecords.value = filtered.length
   } catch (err) {
     error.value = err.message || 'Failed to load inventory'
     console.error('Inventory load error:', err)
@@ -253,9 +343,25 @@ const loadInventory = async () => {
   }
 }
 
+const loadProducts = async () => {
+  try {
+    const allProducts = await getProducts()
+    products.value = allProducts
+  } catch (err) {
+    console.error('Failed to load products:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load products',
+      life: 3000,
+    })
+  }
+}
+
 const openEditDialog = (item) => {
   editingItem.value = { ...item }
-  newQuantity.value = item.quantity
+  newQuantity.value = null
+  movementType.value = 'IN'
   updateNotes.value = ''
   editDialogVisible.value = true
 }
@@ -266,21 +372,31 @@ const saveStock = async () => {
   isUpdating.value = true
 
   try {
+    const finalQuantity = movementType.value === 'IN' 
+      ? (editingItem.value.stock_quantity || 0) + newQuantity.value
+      : Math.max(0, (editingItem.value.stock_quantity || 0) - newQuantity.value)
+
     await InventoryService.updateStock(
       editingItem.value.id,
       newQuantity.value,
+      movementType.value,
       updateNotes.value
     )
+
+    // Update the item in the inventory list immediately
+    const itemIndex = inventory.value.findIndex(item => item.id === editingItem.value.id)
+    if (itemIndex !== -1) {
+      inventory.value[itemIndex].stock_quantity = finalQuantity
+    }
 
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: `Stock updated from ${editingItem.value.quantity} to ${newQuantity.value}`,
+      detail: `Stock ${movementType.value === 'IN' ? 'added' : 'removed'}: ${editingItem.value.stock_quantity} → ${finalQuantity}`,
       life: 3000,
     })
 
     editDialogVisible.value = false
-    await loadInventory()
   } catch (err) {
     toast.add({
       severity: 'error',
@@ -295,14 +411,12 @@ const saveStock = async () => {
 }
 
 const confirmDelete = (item) => {
-  if (confirm(`Delete inventory item "${item.product_name}"? This action cannot be undone.`)) {
+  if (confirm(`Delete inventory item for "${item.sku}"? This action cannot be undone.`)) {
     deleteInventory(item)
   }
 }
 
 const deleteInventory = async (item) => {
-  // Implementation depends on backend support
-  // For now, just show a message
   toast.add({
     severity: 'info',
     summary: 'Info',
@@ -331,6 +445,6 @@ const clearError = () => {
 }
 
 onMounted(() => {
-  loadInventory()
+  loadProducts()
 })
 </script>

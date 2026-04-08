@@ -31,8 +31,8 @@ class InventorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Inventory
-        fields = ['quantity', 'is_low_stock', 'change_amount', 'movement_type', 'reason']
-        read_only_fields = ['quantity', 'is_low_stock']  #Customers only read
+        fields = ['quantity', 'is_low_stock', 'last_updated', 'change_amount', 'movement_type', 'reason']
+        read_only_fields = ['quantity', 'is_low_stock', 'last_updated']  #Customers only read
 
 
 
@@ -42,6 +42,7 @@ class VariantSerializer(serializers.ModelSerializer):
     # Flat stock fields pulled from the related Inventory object
     stock_quantity  = serializers.SerializerMethodField()
     stock_threshold = serializers.SerializerMethodField()
+    stock_last_updated = serializers.SerializerMethodField()
 
     # Safe computed label — always present for cashier/fundi, stripped for customer
     stock_status = serializers.SerializerMethodField()
@@ -57,9 +58,10 @@ class VariantSerializer(serializers.ModelSerializer):
             'unit_type',
             'unit_type_display',
             'tax_type',
-            'stock_quantity',    # stripped for non-privileged
-            'stock_threshold',   # stripped for non-privileged
-            'stock_status',      # stripped for customer; label only for cashier/fundi
+            'stock_quantity',       # stripped for non-privileged
+            'stock_threshold',      # stripped for non-privileged
+            'stock_last_updated',   # stripped for non-privileged
+            'stock_status',         # stripped for customer; label only for cashier/fundi
         ]
 
     def get_stock_quantity(self, obj):
@@ -68,6 +70,10 @@ class VariantSerializer(serializers.ModelSerializer):
 
     def get_stock_threshold(self, obj):
         return obj.stock_threshold
+
+    def get_stock_last_updated(self, obj):
+        inv = getattr(obj, 'inventory', None)
+        return getattr(inv, 'last_updated', None)
 
     def get_stock_status(self, obj):
         inv       = getattr(obj, 'inventory', None)
@@ -87,6 +93,7 @@ class VariantSerializer(serializers.ModelSerializer):
             # Remove exact numbers for all non-privileged roles
             data.pop('stock_quantity', None)
             data.pop('stock_threshold', None)
+            data.pop('stock_last_updated', None)
 
         if role == 'customer':
             # Customers don't need stock status either — they just browse
