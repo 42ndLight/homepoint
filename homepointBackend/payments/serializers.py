@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Transaction, MpesaTransaction, CashTransaction, Account
+from .models import (
+    Transaction, MpesaTransaction, CashTransaction, Account,
+    SaleTransaction, ExpenseTransaction, DepositWithdrawal
+)
 from orders.models import Order  # assuming you have this
 
 
@@ -101,3 +104,44 @@ class CashRecordSerializer(serializers.ModelSerializer):
         # Here we just prepare data – real creation happens in view
 
         return validated_data
+
+
+'''class SaleTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleTransaction
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'order', 'payment_method'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class ExpenseTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseTransaction
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'category', 'supplier', 'approved_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class DepositTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositWithdrawal
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'destination_account', 'authorized_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class WithdrawalTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositWithdrawal
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'destination_account', 'authorized_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']'''
