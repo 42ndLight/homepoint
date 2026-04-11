@@ -23,28 +23,30 @@
           />
         </div>
 
-        <!-- Status Filter -->
+        <!-- Transaction Type Filter -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Transaction Type</label>
           <select
-            v-model="filters.status"
+            v-model="filters.type"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
-            <option value="processing">Processing</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">All Types</option>
+            <option value="SALES">Sales Payment</option>
+            <option value="EXPENSE">Expense Payment</option>
+            <option value="PURCHASE">Purchase Payment</option>
+            <option value="DEPOSIT">Cash Deposit</option>
+            <option value="WITHDRAWAL">Cash Withdrawal</option>
+            <option value="REFUND">Refund</option>
           </select>
         </div>
 
         <!-- Search Box -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Customer/Phone</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Reference / Notes</label>
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search customer..."
+            placeholder="Search transactions..."
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             @input="debounceSearch"
           />
@@ -54,7 +56,7 @@
       <!-- Action Buttons -->
       <div class="flex gap-2">
         <button
-          @click="loadOrders"
+          @click="loadTransactions"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
         >
           <i class="pi pi-search"></i>
@@ -68,7 +70,7 @@
           Reset
         </button>
         <button
-          @click="loadOrders"
+          @click="loadTransactions"
           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 ml-auto"
           :disabled="isLoading"
         >
@@ -80,7 +82,7 @@
 
     <!-- Error Alert -->
     <div v-if="error" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
-      <p class="text-red-800 font-semibold">Error Loading Orders</p>
+      <p class="text-red-800 font-semibold">Error Loading Transactions</p>
       <p class="text-red-700 text-sm mt-1">{{ error }}</p>
       <button
         @click="clearError"
@@ -91,14 +93,14 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading && orders.length === 0" class="space-y-4">
+    <div v-if="isLoading && transactions.length === 0" class="space-y-4">
       <div v-for="i in 5" :key="i" class="bg-gray-200 h-12 rounded animate-pulse"></div>
     </div>
 
     <!-- DataTable -->
     <div v-else class="bg-white rounded-lg shadow overflow-hidden">
       <DataTable
-        :value="orders"
+        :value="transactions"
         :loading="isLoading"
         :paginator="true"
         :rows="10"
@@ -110,82 +112,70 @@
         <template #empty>
           <div class="py-8 text-center text-gray-500">
             <i class="pi pi-inbox text-4xl mb-2"></i>
-            <p>No orders found</p>
+            <p>No transactions found</p>
           </div>
         </template>
 
-        <Column field="id" header="Order ID" :style="{ width: '100px' }" sortable>
+        <Column field="id" header="ID" :style="{ width: '80px' }" sortable>
           <template #body="{ data }">
-            <span class="font-bold text-blue-600">#{{ data.id }}</span>
+            <span class="text-gray-500">#{{ data.id }}</span>
           </template>
         </Column>
 
-        <Column field="customer_name" header="Customer" sortable>
+        <Column field="transaction_type_display" header="Type" sortable>
           <template #body="{ data }">
-            <div>
-              <p class="font-medium text-gray-900">{{ data.customer_name || 'N/A' }}</p>
-              <p class="text-xs text-gray-600">{{ data.customer_phone || 'No phone' }}</p>
-            </div>
+             <span class="font-medium">{{ data.transaction_type_display }}</span>
+          </template>
+        </Column>
+
+        <Column field="movement_type" header="Mvmt" :style="{ width: '100px' }">
+          <template #body="{ data }">
+            <span :class="getMovementClass(data.movement_type)">
+              {{ data.movement_type === 'IN' ? '↑ IN' : '↓ OUT' }}
+            </span>
           </template>
         </Column>
 
         <Column field="formattedDate" header="Date" :style="{ width: '120px' }" sortable>
           <template #body="{ data }">
             <div class="text-sm">
-              <p class="font-medium">{{ formatDate(data.created_at) }}</p>
-              <p class="text-xs text-gray-600">{{ formatTime(data.created_at) }}</p>
+              <p class="font-medium">{{ data.formattedDate }}</p>
+              <p class="text-xs text-gray-600">{{ data.formattedTime }}</p>
             </div>
           </template>
         </Column>
 
-        <Column field="total_amount" header="Amount" :style="{ width: '120px' }">
+        <Column field="amount" header="Amount" :style="{ width: '120px' }">
           <template #body="{ data }">
-            <span class="font-bold text-green-600">{{ formatCurrency(data.total_amount) }}</span>
-          </template>
-        </Column>
-
-        <Column field="payment_method" header="Payment" :style="{ width: '100px' }">
-          <template #body="{ data }">
-            <span class="text-sm px-2 py-1 rounded bg-gray-100 text-gray-800">
-              {{ data.payment_method || 'N/A' }}
+            <span class="font-bold" :class="data.movement_type === 'IN' ? 'text-green-600' : 'text-red-600'">
+              {{ data.formattedAmount }}
             </span>
           </template>
         </Column>
 
-        <Column field="status" header="Status" :style="{ width: '120px' }">
+        <Column field="reference_id" header="Reference">
           <template #body="{ data }">
-            <span
-              class="px-3 py-1 rounded text-xs font-semibold"
-              :class="getStatusClass(data.status)"
-            >
-              {{ formatStatus(data.status) }}
-            </span>
+            <span class="text-sm font-mono">{{ data.reference_id || '-' }}</span>
           </template>
         </Column>
 
-        <Column header="Actions" :style="{ width: '200px' }">
+        <Column header="Actions" :style="{ width: '180px' }">
           <template #body="{ data }">
             <div class="flex gap-2">
               <button
-                @click="viewOrderDetails(data)"
+                @click="viewDetails(data)"
                 class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-xs font-semibold flex items-center gap-1"
               >
                 <i class="pi pi-eye"></i>
-                View
+                Details
               </button>
               <button
+                v-if="data.order_id"
                 @click="reprintReceipt(data)"
                 class="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-xs font-semibold flex items-center gap-1"
               >
                 <i class="pi pi-print"></i>
-                Print
-              </button>
-              <button
-                @click="confirmDelete(data)"
-                class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-xs font-semibold flex items-center gap-1"
-              >
-                <i class="pi pi-trash"></i>
-                Delete
+                Receipt
               </button>
             </div>
           </template>
@@ -193,62 +183,79 @@
       </DataTable>
     </div>
 
-    <!-- Order Details Dialog -->
+    <!-- Transaction Details Dialog -->
     <Dialog
       v-model:visible="detailsDialogVisible"
-      header="Order Details"
+      header="Transaction Details"
       :modal="true"
       :style="{ width: '500px' }"
     >
-      <template v-if="selectedOrder">
+      <template v-if="selectedTransaction">
         <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <p class="text-xs text-gray-600 font-semibold">Order ID</p>
-              <p class="font-bold text-lg text-blue-600">#{{ selectedOrder.id }}</p>
+              <p class="text-xs text-gray-600 font-semibold">Transaction ID</p>
+              <p class="font-bold text-lg text-blue-600">#{{ selectedTransaction.id }}</p>
             </div>
             <div>
-              <p class="text-xs text-gray-600 font-semibold">Date</p>
-              <p class="font-medium">{{ formatDate(selectedOrder.created_at) }}</p>
+              <p class="text-xs text-gray-600 font-semibold">Date & Time</p>
+              <p class="font-medium">{{ selectedTransaction.formattedDate }} {{ selectedTransaction.formattedTime }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-600 font-semibold">Type</p>
+              <p class="font-medium">{{ selectedTransaction.transaction_type_display }}</p>
+            </div>
+             <div>
+              <p class="text-xs text-gray-600 font-semibold">Movement</p>
+              <p :class="getMovementClass(selectedTransaction.movement_type)">
+                {{ selectedTransaction.movement_type_display }}
+              </p>
             </div>
             <div class="col-span-2">
-              <p class="text-xs text-gray-600 font-semibold mb-1">Customer</p>
-              <p class="font-medium">{{ selectedOrder.customer_name || 'N/A' }}</p>
-              <p class="text-sm text-gray-600">{{ selectedOrder.customer_phone || 'No phone' }}</p>
+              <p class="text-xs text-gray-600 font-semibold mb-1">Amount</p>
+              <p class="text-xl font-bold" :class="selectedTransaction.movement_type === 'IN' ? 'text-green-600' : 'text-red-600'">
+                {{ selectedTransaction.formattedAmount }}
+              </p>
             </div>
-            <div>
-              <p class="text-xs text-gray-600 font-semibold">Status</p>
-              <span
-                class="px-2 py-1 rounded text-xs font-semibold inline-block"
-                :class="getStatusClass(selectedOrder.status)"
-              >
-                {{ formatStatus(selectedOrder.status) }}
-              </span>
+             <div v-if="selectedTransaction.balance_after !== undefined">
+              <p class="text-xs text-gray-600 font-semibold">Balance After</p>
+              <p class="font-medium">{{ formatCurrency(selectedTransaction.balance_after) }}</p>
             </div>
-            <div>
-              <p class="text-xs text-gray-600 font-semibold">Payment</p>
-              <p class="font-medium">{{ selectedOrder.payment_method || 'N/A' }}</p>
+            <div v-if="selectedTransaction.reference_id">
+              <p class="text-xs text-gray-600 font-semibold">Reference ID</p>
+              <p class="font-medium font-mono">{{ selectedTransaction.reference_id }}</p>
             </div>
-            <div class="col-span-2">
-              <p class="text-xs text-gray-600 font-semibold mb-1">Total Amount</p>
-              <p class="text-xl font-bold text-green-600">{{ formatCurrency(selectedOrder.total_amount) }}</p>
+             <div v-if="selectedTransaction.order_id" class="col-span-2">
+              <p class="text-xs text-gray-600 font-semibold">Linked Order</p>
+              <p class="font-bold text-blue-600">Order #{{ selectedTransaction.order_id }}</p>
             </div>
           </div>
 
-          <div v-if="selectedOrder.notes" class="bg-gray-50 p-3 rounded border border-gray-200">
+          <div v-if="selectedTransaction.notes" class="bg-gray-50 p-3 rounded border border-gray-200">
             <p class="text-xs text-gray-600 font-semibold mb-1">Notes</p>
-            <p class="text-sm text-gray-700">{{ selectedOrder.notes }}</p>
+            <p class="text-sm text-gray-700">{{ selectedTransaction.notes }}</p>
           </div>
         </div>
       </template>
 
       <template #footer>
-        <button
-          @click="detailsDialogVisible = false"
-          class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition"
-        >
-          Close
-        </button>
+        <div class="flex justify-between w-full">
+           <button
+            v-if="selectedTransaction?.order_id"
+            @click="reprintReceipt(selectedTransaction)"
+            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition flex items-center gap-2"
+          >
+            <i class="pi pi-print"></i>
+            Print Receipt
+          </button>
+          <div v-else></div>
+          <button
+            @click="detailsDialogVisible = false"
+            class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition"
+          >
+            Close
+          </button>
+        </div>
       </template>
     </Dialog>
   </div>
@@ -266,7 +273,7 @@ import TransactionService from '@/services/transactionService'
 const router = useRouter()
 const toast = useToast()
 
-const orders = ref([])
+const transactions = ref([])
 const isLoading = ref(false)
 const error = ref(null)
 const totalRecords = ref(0)
@@ -276,11 +283,11 @@ const pageSize = ref(10)
 const filters = ref({
   startDate: '',
   endDate: '',
-  status: '',
+  type: '',
 })
 
 const searchQuery = ref('')
-const selectedOrder = ref(null)
+const selectedTransaction = ref(null)
 const detailsDialogVisible = ref(false)
 
 let searchTimeout = null
@@ -289,11 +296,11 @@ const debounceSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     currentPage.value = 0
-    loadOrders()
+    loadTransactions()
   }, 300)
 }
 
-const loadOrders = async () => {
+const loadTransactions = async () => {
   isLoading.value = true
   error.value = null
 
@@ -305,24 +312,24 @@ const loadOrders = async () => {
 
     if (filters.value.startDate) params.start_date = filters.value.startDate
     if (filters.value.endDate) params.end_date = filters.value.endDate
-    if (filters.value.status) params.status = filters.value.status
+    if (filters.value.type) params.transaction_type = filters.value.type
     if (searchQuery.value) params.search = searchQuery.value
 
-    const response = await TransactionService.getOrders(params)
+    const response = await TransactionService.getTransactions(params)
 
     if (Array.isArray(response)) {
-      orders.value = response.map((order) => TransactionService.formatOrder(order))
+      transactions.value = response.map(t => TransactionService.formatTransaction(t))
       totalRecords.value = response.length
     } else if (response.results) {
-      orders.value = response.results.map((order) => TransactionService.formatOrder(order))
+      transactions.value = response.results.map(t => TransactionService.formatTransaction(t))
       totalRecords.value = response.count || response.results.length
     } else {
-      orders.value = []
+      transactions.value = []
       totalRecords.value = 0
     }
   } catch (err) {
-    error.value = err.message || 'Failed to load orders'
-    console.error('Orders load error:', err)
+    error.value = err.message || 'Failed to load transactions'
+    console.error('Transactions load error:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -338,26 +345,11 @@ const resetFilters = () => {
   filters.value = {
     startDate: '',
     endDate: '',
-    status: '',
+    type: '',
   }
   searchQuery.value = ''
   currentPage.value = 0
-  loadOrders()
-}
-
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-KE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-const formatTime = (dateString) => {
-  return new Date(dateString).toLocaleTimeString('en-KE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  loadTransactions()
 }
 
 const formatCurrency = (value) => {
@@ -370,76 +362,41 @@ const formatCurrency = (value) => {
   }).format(numValue)
 }
 
-const formatStatus = (status) => {
-  if (!status) return 'Unknown'
-  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+const getMovementClass = (type) => {
+  return TransactionService.getMovementColor(type)
 }
 
-const getStatusClass = (status) => {
-  return TransactionService.getStatusColor(status)
-}
-
-const viewOrderDetails = (order) => {
-  selectedOrder.value = order
+const viewDetails = (transaction) => {
+  selectedTransaction.value = transaction
   detailsDialogVisible.value = true
 }
 
-const reprintReceipt = async (order) => {
+const reprintReceipt = (transaction) => {
+  if (!transaction.order_id) return
+  
   try {
-    // Navigate to receipt view with order ID
-    // This assumes you have a receipt view at /receipts/{id}
-    await router.push({
-      name: 'receipt', // Update this to your actual receipt route name
-      params: { id: order.id },
-    })
+    const url = router.resolve({
+      name: 'receipt',
+      params: { orderId: transaction.order_id },
+      query: { print: 'true' }
+    }).href
+    
+    window.open(url, '_blank')
   } catch (err) {
-    // If route doesn't exist, show a message
-    toast.add({
-      severity: 'info',
-      summary: 'Info',
-      detail: `Receipt for Order #${order.id} - Print functionality coming soon`,
-      life: 3000,
-    })
-  }
-}
-
-const confirmDelete = (order) => {
-  if (confirm(`Delete order #${order.id}? This action cannot be undone.`)) {
-    deleteOrder(order)
-  }
-}
-
-const deleteOrder = async (order) => {
-  isLoading.value = true
-
-  try {
-    await TransactionService.deleteOrder(order.id)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: `Order #${order.id} deleted successfully`,
-      life: 3000,
-    })
-
-    await loadOrders()
-  } catch (err) {
+    console.error('Print navigation error:', err)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.message || 'Failed to delete order',
+      detail: 'Could not open receipt for printing',
       life: 3000,
     })
-    console.error('Delete error:', err)
-  } finally {
-    isLoading.value = false
   }
 }
 
 const onPageChange = (event) => {
   currentPage.value = event.page
   pageSize.value = event.rows
-  loadOrders()
+  loadTransactions()
 }
 
 const clearError = () => {
@@ -447,6 +404,6 @@ const clearError = () => {
 }
 
 onMounted(() => {
-  loadOrders()
+  loadTransactions()
 })
 </script>

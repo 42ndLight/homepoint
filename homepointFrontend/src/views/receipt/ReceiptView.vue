@@ -109,7 +109,12 @@ const paymentMethod = computed(() =>
 onMounted(async () => {
   if (orderId.value) {
     const result = await orderStore.fetchOrder(orderId.value)
-    if (!result.success) {
+    if (result.success && route.query.print === 'true') {
+      // Small delay to ensure the DOM is rendered before printing
+      setTimeout(() => {
+        window.print()
+      }, 500)
+    } else if (!result.success) {
       toast.add({
         severity: 'error',
         summary: 'Error',

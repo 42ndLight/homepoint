@@ -7,9 +7,16 @@
     </div>
 
     <!-- Tabs Container -->
-    <TabView>
+    <Tabs value="Sales & Reports">
+      <TabList>
+              <Tab value="Sales & Reports">Sales & Reports</Tab>
+              <Tab value="Transaction Logs">Transaction Logs</Tab>
+              <Tab value="Inventory Control">Inventory Control</Tab>
+              <Tab value="Store Details">Store Details</Tab>
+          </TabList>
       <!-- Sales & Reporting Tab -->
-      <TabPanel header="Sales & Reports" leftIcon="pi pi-chart-bar">
+      <TabPanels>
+      <TabPanel value="Sales & Reports" leftIcon="pi pi-chart-bar">
         <div class="p-4">
           <!-- Date Range Filter -->
           <DateRangeFilter @filter-change="handleFilterChange" />
@@ -89,17 +96,17 @@
       </TabPanel>
 
       <!-- Staff Management Tab -->
-      <TabPanel header="Transaction Logs" leftIcon="pi pi-receipt">
+      <TabPanel value="Transaction Logs" leftIcon="pi pi-receipt">
         <TransactionLogsPanel />
       </TabPanel>
 
       <!-- Inventory Control Tab -->
-      <TabPanel header="Inventory Control" leftIcon="pi pi-box">
+      <TabPanel value="Inventory Control" leftIcon="pi pi-box">
         <InventoryControlPanel />
       </TabPanel>
 
       <!-- Store Details Tab -->
-      <TabPanel header="Store Details" leftIcon="pi pi-cog">
+      <TabPanel value="Store Details" leftIcon="pi pi-cog">
         <div class="p-4">
           <div class="bg-amber-50 border-l-4 border-amber-600 p-4 rounded">
             <p class="text-amber-800 font-semibold">⚙️ Store Details & Settings</p>
@@ -116,14 +123,18 @@
           </div>
         </div>
       </TabPanel>
-    </TabView>
+    </TabPanels>
+    </Tabs>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
+import Tabs from 'primevue/tabs';
+import TabList from 'primevue/tablist';
+import Tab from 'primevue/tab';
+import TabPanels from 'primevue/tabpanels';
+import TabPanel from 'primevue/tabpanel';
 import DateRangeFilter from '@/components/admin/DateRangeFilter.vue'
 import SalesSummary from '@/components/admin/SalesSummary.vue'
 import SalesChart from '@/components/admin/SalesChart.vue'

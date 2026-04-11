@@ -2,6 +2,32 @@ import api from './api'
 
 class TransactionService {
   /**
+   * Fetch all transactions (sales, expenses, etc) from /payments/transactions/
+   * @param {Object} params - Query parameters (search, start_date, end_date, limit, offset, transaction_type)
+   * @returns {Promise<Object>} Paginated transactions data
+   */
+  static async getTransactions(params = {}) {
+    try {
+      const queryParams = new URLSearchParams()
+      if (params.search) queryParams.append('search', params.search)
+      if (params.start_date) queryParams.append('start_date', params.start_date)
+      if (params.end_date) queryParams.append('end_date', params.end_date)
+      if (params.transaction_type) queryParams.append('transaction_type', params.transaction_type)
+      if (params.limit) queryParams.append('limit', params.limit || 20)
+      if (params.offset) queryParams.append('offset', params.offset || 0)
+
+      const queryString = queryParams.toString()
+      const endpoint = `/payments/transactions/${queryString ? '?' + queryString : ''}`
+
+      const data = await api.get(endpoint)
+      return data
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error)
+      throw error
+    }
+  }
+
+  /**
    * Fetch all orders with optional filters
    * @param {Object} params - Query parameters (search, start_date, end_date, limit, offset, status)
    * @returns {Promise<Object>} Paginated orders data
@@ -114,11 +140,50 @@ class TransactionService {
   }
 
   /**
+   * Get movement type color for UI
+   * @param {string} type - Movement type (IN/OUT)
+   * @returns {string} Tailwind color class
+   */
+  static getMovementColor(type) {
+    if (type === 'IN') return 'text-green-600 font-bold'
+    if (type === 'OUT') return 'text-red-600 font-bold'
+    return 'text-gray-800'
+  }
+
+  /**
+   * Format transaction data for display
+   * @param {Object} transaction - Transaction object from API
+   * @returns {Object} Formatted transaction
+   */
+  static formatTransaction(transaction) {
+    if (!transaction) return null
+    return {
+      ...transaction,
+      formattedDate: new Date(transaction.timestamp).toLocaleDateString('en-KE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
+      formattedTime: new Date(transaction.timestamp).toLocaleTimeString('en-KE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      formattedAmount: new Intl.NumberFormat('en-KE', {
+        style: 'currency',
+        currency: 'KES',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(transaction.amount || 0),
+    }
+  }
+
+  /**
    * Format order data for display
    * @param {Object} order - Order object from API
    * @returns {Object} Formatted order
    */
   static formatOrder(order) {
+    if (!order) return null
     return {
       ...order,
       formattedDate: new Date(order.created_at).toLocaleDateString('en-KE', {
