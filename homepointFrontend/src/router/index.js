@@ -50,7 +50,8 @@ const router = createRouter({
       path: '/',
       name: 'landing',
       component: () => import('@/views/landing/LandingPage.vue'),
-      meta: { title: 'Homepoint Hardware Store' },
+      beforeEnter: requireAuth,
+      meta: { title: 'Internal Resources' },
     },
     {
       path: '/:pathMatch(.*)*',
