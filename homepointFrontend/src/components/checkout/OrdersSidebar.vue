@@ -81,6 +81,14 @@
                           @click="checkMpesaStatus(order.id)  "
                         />
                         <Button
+                          label="STK Push"
+                          icon="pi pi-mobile"
+                          severity="warn"
+                          size="small"
+                          :loading="initiatingStkId === order.id"
+                          @click="initiateStk(order)"
+                        />
+                        <Button
                           label="Complete M-Pesa"
                           icon="pi pi-check"
                           severity="success"
@@ -270,6 +278,7 @@ const toast = useToast()
 
 const activeTab = ref(0)
 const checkingOrderId = ref(null)
+const initiatingStkId = ref(null)
 const mpesaDialogVisible = ref(false)
 const cashDialogVisible = ref(false)
 const mpesaOrder = ref(null)
@@ -336,6 +345,25 @@ const checkMpesaStatus = async (orderId) => {
     }
   } finally {
     checkingOrderId.value = null
+  }
+}
+
+const initiateStk = async (order) => {
+  initiatingStkId.value = order.id
+  try {
+    const res = await orderStore.initiateStkPush(order.id, order.phone_number)
+    if (res.success) {
+      toast.add({ 
+        severity: 'success', 
+        summary: 'STK Push Sent', 
+        detail: 'Prompt sent to customer phone. Ask them to enter their PIN.', 
+        life: 5000 
+      })
+    } else {
+      toast.add({ severity: 'error', summary: 'STK Push Failed', detail: res.error, life: 3000 })
+    }
+  } finally {
+    initiatingStkId.value = null
   }
 }
 

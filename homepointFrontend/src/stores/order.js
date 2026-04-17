@@ -240,6 +240,33 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
+  const initiateStkPush = async (orderId, phoneNumber) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post('/payments/initiate-stk-push/', {
+        order_id: orderId,
+        phone_number: phoneNumber,
+        transaction_type: 'SALES'
+      })
+
+      return {
+        success: true,
+        message: response.message,
+        checkout_request_id: response.checkout_request_id,
+      }
+    } catch (err) {
+      error.value = err.data?.error || err.message || 'Failed to initiate STK Push'
+      return {
+        success: false,
+        error: error.value,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const updateOrderInLists = (updatedOrder) => {
     // Update current order
     if (currentOrder.value?.id === updatedOrder.id) {
@@ -332,6 +359,7 @@ export const useOrderStore = defineStore('order', () => {
     completeCashPayment,
     checkMpesaPaymentStatus,
     deleteOrder,
+    initiateStkPush,
     clearCurrentOrder,
     clearError,
     
