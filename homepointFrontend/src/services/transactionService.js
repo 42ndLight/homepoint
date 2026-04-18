@@ -2,6 +2,21 @@ import api from './api'
 
 class TransactionService {
   /**
+   * Record a manual financial transaction (expense, deposit, withdrawal)
+   * @param {Object} data - Transaction data (amount, transaction_type, notes, category, supplier, etc)
+   * @returns {Promise<Object>} Created transaction data
+   */
+  static async recordFinancialTransaction(data) {
+    try {
+      const response = await api.post('/payments/cash/', data)
+      return response
+    } catch (error) {
+      console.error('Failed to record financial transaction:', error)
+      throw error
+    }
+  }
+
+  /**
    * Fetch all transactions (sales, expenses, etc) from /payments/transactions/
    * @param {Object} params - Query parameters (search, start_date, end_date, limit, offset, transaction_type)
    * @returns {Promise<Object>} Paginated transactions data

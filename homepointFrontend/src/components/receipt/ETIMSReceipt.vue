@@ -29,19 +29,19 @@
       <!-- Items -->
       <div v-for="item in receiptData.items" :key="item.id" class="text-xs mb-3">
         <div class="font-semibold break-words">
-          {{ item.variant?.product?.name || 'Product' }}
+          {{ item.product_name || 'Product' }}
         </div>
         <div class="text-gray-600 text-xs">
-          SKU: {{ item.variant?.sku }}
+          SKU: {{ item.sku }}
         </div>
 
         <div class="flex justify-between items-end mt-1">
           <div class="text-gray-700">
-            {{ formatQuantity(item.quantity, item.variant?.unit_type) }} x {{ formatCurrency(item.price_at_purchase) }}
+            {{ formatQuantity(item.quantity, item.unit_type) }} x {{ formatCurrency(item.price_at_purchase) }}
           </div>
           
           <div class="font-bold">
-            {{ formatCurrency(item.quantity * item.price_at_purchase) }}{{ item.tax_designation || 'A' }}
+            {{ formatCurrency(item.quantity * item.price_at_purchase) }}{{ item.tax_type || 'A' }}
           </div>
         </div>
       </div>

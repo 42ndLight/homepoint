@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from payments.models import MpesaTransaction, Account
 from payments.serializers import MpesaCheckoutSerializer
-from payments.mpesa.mpesa_api import MpesaExpressClient
+from payments.mpesa.core import MpesaExpressClient
 from payments.services import record_mpesa_initiated, confirm_mpesa_payment
 from orders.models import Order
 

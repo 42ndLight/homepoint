@@ -70,7 +70,7 @@
                           </div>
                         </div>
                       </div>
-                      <div class="p-4 border-t  border-gray-100    flex flex-wrap  gap-2">
+                      <div class="p-4 border-t  border-gray-100    flex flex-wrap justify-end  gap-2">
                         <Button
                           label="Check M-Pesa"
                           icon="pi pi-sync"

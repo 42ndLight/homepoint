@@ -1,150 +1,172 @@
 <template>
-  <div class="p-4">
-    <!-- Header with Product Selection and Search -->
-    <div class="mb-6">
-      <div class="flex flex-col md:flex-row gap-4 mb-4">
-        <div class="flex-1">
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
-          <select
-            v-model="selectedProductId"
-            @change="loadInventory"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">-- Select a product --</option>
-            <option v-for="product in products" :key="product.id" :value="product.id">
-              {{ product.name }}
-            </option>
-          </select>
-        </div>
-        <div class="flex-1">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search by SKU or variant..."
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            @input="debounceSearch"
-          />
-        </div>
-        <button
-          @click="loadInventory"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap h-10 mt-6"
-        >
-          <i class="pi pi-refresh" :class="{ 'animate-spin': isLoading }"></i>
-          Refresh
-        </button>
-      </div>
-    </div>
+  <div class="p-0">
+    <Tabs value="Stock Management">
+      <TabList class="px-4 pt-2">
+        <Tab value="Stock Management">
+          <i class="pi pi-box mr-2"></i>
+          Stock Management
+        </Tab>
+        <Tab value="Financial Transactions">
+          <i class="pi pi-wallet mr-2"></i>
+          Financial Transactions
+        </Tab>
+      </TabList>
 
-    <!-- Error Alert -->
-    <div v-if="error" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
-      <p class="text-red-800 font-semibold">Error Loading Inventory</p>
-      <p class="text-red-700 text-sm mt-1">{{ error }}</p>
-      <button
-        @click="clearError"
-        class="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
-      >
-        Dismiss
-      </button>
-    </div>
+      <TabPanels>
+        <!-- Stock Management Tab -->
+        <TabPanel value="Stock Management">
+          <div class="p-4">
+            <!-- Header with Product Selection and Search -->
+            <div class="mb-6">
+              <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <div class="flex-1">
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
+                  <select
+                    v-model="selectedProductId"
+                    @change="loadInventory"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">-- Select a product --</option>
+                    <option v-for="product in products" :key="product.id" :value="product.id">
+                      {{ product.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="flex-1">
+                  <label class="block text-sm font-semibold text-gray-700 mb-2">Search Variants</label>
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search by SKU or variant..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    @input="debounceSearch"
+                  />
+                </div>
+                <div class="flex items-end">
+                  <button
+                    @click="loadInventory"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap h-10 mb-0.5"
+                  >
+                    <i class="pi pi-refresh" :class="{ 'animate-spin': isLoading }"></i>
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading && inventory.length === 0" class="space-y-4">
-      <div v-for="i in 5" :key="i" class="bg-gray-200 h-12 rounded animate-pulse"></div>
-    </div>
+            <!-- Error Alert -->
+            <div v-if="error" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <p class="text-red-800 font-semibold">Error Loading Inventory</p>
+              <p class="text-red-700 text-sm mt-1">{{ error }}</p>
+              <button
+                @click="clearError"
+                class="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+              >
+                Dismiss
+              </button>
+            </div>
 
-    <!-- DataTable -->
-    <div v-else class="bg-white rounded-lg shadow overflow-hidden">
-      <DataTable
-        :value="inventory"
-        :loading="isLoading"
-        :paginator="true"
-        :rows="10"
-        :total-records="totalRecords"
-        responsive-layout="scroll"
-        class="p-datatable-striped"
-        @page="onPageChange"
-      >
-        <template #empty>
-          <div class="py-8 text-center text-gray-500">
-            <i class="pi pi-inbox text-4xl mb-2"></i>
-            <p>{{ selectedProductId ? 'No inventory items found' : 'Select a product to view inventory' }}</p>
+            <!-- Loading State -->
+            <div v-if="isLoading && inventory.length === 0" class="space-y-4">
+              <div v-for="i in 5" :key="i" class="bg-gray-200 h-12 rounded animate-pulse"></div>
+            </div>
+
+            <!-- DataTable -->
+            <div v-else class="bg-white rounded-lg shadow overflow-hidden">
+              <DataTable
+                :value="inventory"
+                :loading="isLoading"
+                :paginator="true"
+                :rows="10"
+                :total-records="totalRecords"
+                responsive-layout="scroll"
+                class="p-datatable-striped"
+                @page="onPageChange"
+              >
+                <template #empty>
+                  <div class="py-8 text-center text-gray-500">
+                    <i class="pi pi-inbox text-4xl mb-2"></i>
+                    <p>{{ selectedProductId ? 'No inventory items found' : 'Select a product to view inventory' }}</p>
+                  </div>
+                </template>
+
+                <Column field="id" header="Variant ID" :style="{ width: '80px' }" sortable>
+                  <template #body="{ data }">
+                    <span class="text-sm font-medium">{{ data.id }}</span>
+                  </template>
+                </Column>
+
+                <Column field="sku" header="SKU" sortable>
+                  <template #body="{ data }">
+                    <div>
+                      <p class="font-medium text-gray-900">{{ data.sku }}</p>
+                      <p class="text-xs text-gray-600" v-if="data.attributes">
+                        {{ formatAttributes(data.attributes) }}
+                      </p>
+                    </div>
+                  </template>
+                </Column>
+
+                <Column field="stock_quantity" header="Current Stock" :style="{ width: '120px' }">
+                  <template #body="{ data }">
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-lg">{{ data.stock_quantity }}</span>
+                      <span
+                        class="px-2 py-1 rounded text-xs font-semibold"
+                        :class="getStatusClass(data.stock_quantity)"
+                      >
+                        {{ getStatusLabel(data.stock_quantity) }}
+                      </span>
+                    </div>
+                  </template>
+                </Column>
+
+                <Column field="stock_threshold" header="Reorder Point" :style="{ width: '120px' }">
+                  <template #body="{ data }">
+                    <span class="text-sm">{{ data.stock_threshold || 'N/A' }}</span>
+                  </template>
+                </Column>
+
+                <Column field="stock_last_updated" header="Last Updated" :style="{ width: '180px' }">
+                  <template #body="{ data }">
+                    <span class="text-sm text-gray-700">{{ formatLastUpdated(data.stock_last_updated) }}</span>
+                  </template>
+                </Column>
+
+                <Column header="Actions" :style="{ width: '200px' }">
+                  <template #body="{ data }">
+                    <div class="flex gap-2">
+                      <button
+                        @click="openEditDialog(data)"
+                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-xs font-semibold flex items-center gap-1"
+                      >
+                        <i class="pi pi-pencil"></i>
+                        Update Stock
+                      </button>
+                      <button
+                        @click="confirmDelete(data)"
+                        class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-xs font-semibold flex items-center gap-1"
+                        v-if="canDelete"
+                      >
+                        <i class="pi pi-trash"></i>
+                        Delete
+                      </button>
+                    </div>
+                  </template>
+                </Column>
+              </DataTable>
+            </div>
           </div>
-        </template>
+        </TabPanel>
 
-        <Column field="id" header="Variant ID" :style="{ width: '80px' }" sortable>
-          <template #body="{ data }">
-            <span class="text-sm font-medium">{{ data.id }}</span>
-          </template>
-        </Column>
+        <!-- Financial Transactions Tab -->
+        <TabPanel value="Financial Transactions">
+          <FinancialTransactionsPanel />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
-        <Column field="sku" header="SKU" sortable>
-          <template #body="{ data }">
-            <div>
-              <p class="font-medium text-gray-900">{{ data.sku }}</p>
-              <p class="text-xs text-gray-600" v-if="data.attributes">
-                {{ formatAttributes(data.attributes) }}
-              </p>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="stock_quantity" header="Current Stock" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <div class="flex items-center gap-2">
-              <span class="font-semibold text-lg">{{ data.stock_quantity }}</span>
-              <span
-                class="px-2 py-1 rounded text-xs font-semibold"
-                :class="getStatusClass(data.stock_quantity)"
-              >
-                {{ getStatusLabel(data.stock_quantity) }}
-              </span>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="stock_threshold" header="Reorder Point" :style="{ width: '120px' }">
-          <template #body="{ data }">
-            <span class="text-sm">{{ data.stock_threshold || 'N/A' }}</span>
-          </template>
-        </Column>
-
-        <Column field="stock_last_updated" header="Last Updated" :style="{ width: '180px' }">
-          <template #body="{ data }">
-            <span class="text-sm text-gray-700">{{ formatLastUpdated(data.stock_last_updated) }}</span>
-          </template>
-        </Column>
-
-        <Column field="last_updated" header="Last Updated" :style="{ width: '180px' }">
-          <template #body="{ data }">
-            <span class="text-sm text-gray-700">{{ formatLastUpdated(data.last_updated) }}</span>
-          </template>
-        </Column>
-
-        <Column header="Actions" :style="{ width: '200px' }">
-          <template #body="{ data }">
-            <div class="flex gap-2">
-              <button
-                @click="openEditDialog(data)"
-                class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-xs font-semibold flex items-center gap-1"
-              >
-                <i class="pi pi-pencil"></i>
-                Edit
-              </button>
-              <button
-                @click="confirmDelete(data)"
-                class="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-xs font-semibold flex items-center gap-1"
-                v-if="canDelete"
-              >
-                <i class="pi pi-trash"></i>
-                Delete
-              </button>
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
-
-    <!-- Edit Dialog -->
+    <!-- Edit Dialog (kept outside tabs for overlay) -->
     <Dialog v-model:visible="editDialogVisible" header="Edit Stock" :modal="true" :style="{ width: '400px' }">
       <template v-if="editingItem">
         <div class="space-y-4">
@@ -251,11 +273,17 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import Tabs from 'primevue/tabs'
+import TabList from 'primevue/tablist'
+import Tab from 'primevue/tab'
+import TabPanels from 'primevue/tabpanels'
+import TabPanel from 'primevue/tabpanel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import InventoryService from '@/services/inventoryService'
 import { getProducts } from '@/services/dbService'
+import FinancialTransactionsPanel from './FinancialTransactionsPanel.vue'
 
 const toast = useToast()
 

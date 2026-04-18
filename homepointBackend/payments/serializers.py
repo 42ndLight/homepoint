@@ -76,14 +76,19 @@ class CashRecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
     transaction_type = serializers.ChoiceField(choices=Transaction.TYPE_CHOICES, write_only=True)
     
-    reference_id = serializers.CharField(max_length=100, required=False, write_only=True)
+    reference_id = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
+    
+    # Extra fields for specific transaction types (handled in view/service)
+    category = serializers.CharField(max_length=20, required=False, allow_blank=True, write_only=True)
+    supplier = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = CashTransaction
         fields = [
             'amount', 'order_id', 'transaction_type', 
-            'reference_id', 'receipt_number',
-            'recorded_by', 'created_at',            
+            'reference_id', 'receipt_number', 'notes',
+            'recorded_by', 'created_at',
+            'category', 'supplier',
         ]
         read_only_fields = ['recorded_by', 'created_at']
 
