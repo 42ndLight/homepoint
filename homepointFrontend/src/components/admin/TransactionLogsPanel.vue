@@ -153,6 +153,12 @@
           </template>
         </Column>
 
+        <Column field="status" header="Status" :style="{ width: '160px' }">
+          <template #body="{ data }">
+            <Tag :value="formatStatus(data)" :severity="getStatusSeverity(data)" />
+          </template>
+        </Column>
+
         <Column field="reference_id" header="Reference">
           <template #body="{ data }">
             <span class="text-sm font-mono">{{ data.reference_id || '-' }}</span>
@@ -229,6 +235,10 @@
               <p class="text-xs text-gray-600 font-semibold">Linked Order</p>
               <p class="font-bold text-blue-600">Order #{{ selectedTransaction.order_id }}</p>
             </div>
+            <div>
+              <p class="text-xs text-gray-600 font-semibold">Status</p>
+              <Tag :value="formatStatus(selectedTransaction)" :severity="getStatusSeverity(selectedTransaction)" />
+            </div>
           </div>
 
           <div v-if="selectedTransaction.notes" class="bg-gray-50 p-3 rounded border border-gray-200">
@@ -268,6 +278,7 @@ import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
+import Tag from 'primevue/tag'
 import TransactionService from '@/services/transactionService'
 
 const router = useRouter()
@@ -364,6 +375,56 @@ const formatCurrency = (value) => {
 
 const getMovementClass = (type) => {
   return TransactionService.getMovementColor(type)
+}
+
+const formatStatus = (data) => {
+  // 1. Check M-Pesa / Transaction level status first
+  if (data.status) {
+    const s = data.status.toLowerCase()
+    if (s === 'pending') return 'Pending Payment'
+    if (s === 'failed') return 'Payment Failed'
+    if (s === 'cancelled') return 'Payment Cancelled'
+    if (s === 'success') return 'Payment Success'
+  }
+  
+  // 2. Check Order level status
+  if (data.order_status) {
+    const s = data.order_status.toLowerCase()
+    const map = { 
+      pending: 'Order Pending', 
+      paid: 'Order Paid', 
+      delivered: 'Delivered', 
+      cancelled: 'Cancelled' 
+    }
+    return map[s] || data.order_status
+  }
+  
+  // 3. Default for finalized transactions (Cash, Expenses, etc)
+  return 'Completed'
+}
+
+const getStatusSeverity = (data) => {
+  // 1. Transaction level severity
+  if (data.status) {
+    const s = data.status.toLowerCase()
+    if (s === 'pending') return 'warn'
+    if (s === 'failed' || s === 'cancelled') return 'danger'
+    if (s === 'success') return 'success'
+  }
+
+  // 2. Order level severity
+  if (data.order_status) {
+    const s = data.order_status.toLowerCase()
+    const map = { 
+      pending: 'warn', 
+      paid: 'success', 
+      delivered: 'success', 
+      cancelled: 'danger' 
+    }
+    return map[s] || 'info'
+  }
+
+  return 'success'
 }
 
 const viewDetails = (transaction) => {

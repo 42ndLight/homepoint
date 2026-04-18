@@ -16,7 +16,9 @@ class TransactionHistorySerializer(serializers.ModelSerializer):
     transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
     movement_type_display = serializers.CharField(source='get_movement_type_display', read_only=True)
     order_id = serializers.PrimaryKeyRelatedField(source='order', read_only=True)
-    order_number = serializers.CharField(source='order.id', read_only=True)  # or custom order number
+    order_number = serializers.CharField(source='order.id', read_only=True)
+    order_status = serializers.CharField(source='order.status', read_only=True)
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -25,9 +27,13 @@ class TransactionHistorySerializer(serializers.ModelSerializer):
             'transaction_type', 'transaction_type_display',
             'amount', 'balance_after',
             'timestamp', 'reference_id', 'notes',
-            'order_id', 'order_number',
+            'order_id', 'order_number', 'order_status', 'status',
         ]
         read_only_fields = fields  # enforce read-only
+
+    def get_status(self, obj):
+        # Return status if it exists on subclass (e.g. MpesaTransaction)
+        return getattr(obj, 'status', None)
 
 
 class MpesaCheckoutSerializer(serializers.ModelSerializer):
@@ -46,14 +52,13 @@ class MpesaCheckoutSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True
     )
-    phone_number = serializers.CharField(max_length=15, required=True)
-    transaction_type = serializers.ChoiceField(choices=Transaction.TYPE_CHOICES, write_only=True)    
+    phone_number = serializers.CharField(max_length=15, required=True)    
     reference_id = serializers.CharField(max_length=100, required=False, write_only=True)
     
 
     class Meta:
         model = MpesaTransaction
-        fields = ['phone_number', 'order_id', 'order_total_amount', 'transaction_type', 'reference_id']
+        fields = ['phone_number', 'order_id', 'order_total_amount', 'reference_id']
 
     def validate(self, data):
         order = data['order']

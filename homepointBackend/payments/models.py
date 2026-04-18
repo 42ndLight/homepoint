@@ -67,6 +67,7 @@ class MpesaTransaction(Transaction):
     ]    
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='mpesa_transactions')
+    merchant_request_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     checkout_request_id = models.CharField(max_length=100, unique=True)
     bill_reference_no = models.CharField(max_length=100, unique=True)
     mpesa_receipt_number = models.CharField(max_length=100, blank=True)

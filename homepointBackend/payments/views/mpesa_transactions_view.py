@@ -18,11 +18,15 @@ from orders.models import Order
 
 logger = logging.getLogger(__name__)
 
+from django.utils import timezone
+from datetime import timedelta
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def initiate_stk_push(request):
     """
-    Endpoint for frontend to trigger M-Pesa STK Push.
+    Endpoint for frontend to trigger M-Pesa STK Push with Idempotency.
+    Allows retry after 1 minute if previous attempt is still PENDING.
     """
     serializer = MpesaCheckoutSerializer(data=request.data)
     if serializer.is_valid():
@@ -30,21 +34,47 @@ def initiate_stk_push(request):
         phone_number = serializer.validated_data['phone_number']
         amount = order.total_amount
 
-        client = MpesaExpressClient()
         try:
-            response = client.stk_push(
-                phone_number=phone_number,
-                amount=amount,
-                order_id=order.id
-            )
-            
-            res_data = response.json()
-            
-            if response.status_code == 200 and res_data.get('ResponseCode') == '0':
-                checkout_request_id = res_data.get('CheckoutRequestID')
+            with transaction.atomic():
+                # Lock the order and check for recent PENDING transactions
+                one_minute_ago = timezone.now() - timedelta(minutes=1)
                 
-                # Record the initiated transaction as PENDING
-                with transaction.atomic():
+                existing_pending = MpesaTransaction.objects.select_for_update().filter(
+                    order=order, 
+                    status='PENDING',
+                    timestamp__gte=one_minute_ago # Check if it happened in the last minute
+                ).first()
+
+                if existing_pending:
+                    return Response({
+                        "message": "A payment request was recently sent. Please wait at least 60 seconds before retrying.",
+                        "checkout_request_id": existing_pending.checkout_request_id,
+                        "is_duplicate": True
+                    }, status=status.HTTP_200_OK)
+
+                # If there's an older pending transaction, we mark it as FAILED/EXPIRED
+                # to avoid confusion before starting a new one.
+                MpesaTransaction.objects.filter(
+                    order=order, 
+                    status='PENDING',
+                    timestamp__lt=one_minute_ago
+                ).update(status='FAILED', notes="System: Timed out/Retried by user")
+
+                # Call M-Pesa API
+                client = MpesaExpressClient()
+                response = client.stk_push(
+                    phone_number=phone_number,
+                    amount=amount,
+                    order_id=order.id
+                )
+                
+                res_data = response.json()
+                
+                if response.status_code == 200 and res_data.get('ResponseCode') == '0':
+                    checkout_request_id = res_data.get('CheckoutRequestID')
+                    merchant_request_id = res_data.get('MerchantRequestID')
+                    
+                    # Record the initiated transaction
                     record_mpesa_initiated(
                         order=order,
                         amount=amount,
@@ -52,22 +82,55 @@ def initiate_stk_push(request):
                         checkout_request_id=checkout_request_id,
                         user=request.user
                     )
-                
-                return Response({
-                    "message": "STK Push initiated successfully",
-                    "checkout_request_id": checkout_request_id
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    "error": "Failed to initiate STK Push",
-                    "details": res_data
-                }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    # Store the merchant_request_id we just added to the model
+                    tx = MpesaTransaction.objects.get(checkout_request_id=checkout_request_id)
+                    tx.merchant_request_id = merchant_request_id
+                    tx.save(update_fields=['merchant_request_id'])
+                    
+                    return Response({
+                        "message": "STK Push initiated successfully",
+                        "checkout_request_id": checkout_request_id
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        "error": "M-Pesa API error",
+                        "details": res_data
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
-            logger.error(f"Error initiating STK Push: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error initiating STK Push for Order #{order.id}: {str(e)}")
+            return Response({"error": "System error occurred while initiating payment."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_order_payment_status(request, order_id):
+    """
+    Check if a successful M-Pesa transaction exists for the given order.
+    """
+    try:
+        # Get the latest MpesaTransaction for this order
+        mpesa_tx = MpesaTransaction.objects.filter(order_id=order_id).order_by('-timestamp').first()
+        
+        if not mpesa_tx:
+            return Response({
+                "status": "NOT_FOUND",
+                "message": "No transaction found for this order"
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        return Response({
+            "status": mpesa_tx.status,
+            "mpesa_receipt": mpesa_tx.mpesa_receipt_number,
+            "checkout_request_id": mpesa_tx.checkout_request_id,
+            "amount": mpesa_tx.amount,
+            "order_status": mpesa_tx.order.status
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error checking payment status for order {order_id}: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @api_view(['POST'])
@@ -139,7 +202,7 @@ def mpesa_confirmation_url(request):
             MpesaTransaction.objects.create(
                 mpesa_receipt_number=trans_id,
                 order=order,
-                user=order.user if order else None, # Might need to handle if None
+                user=order.user if order else None, 
                 amount=amount,
                 movement_type='IN',
                 transaction_type='SALE',
@@ -148,7 +211,8 @@ def mpesa_confirmation_url(request):
                 callback_data=data,
                 reference_id=trans_id,
                 balance_after=org_bal,
-                checkout_request_id=f"C2B-{trans_id}" # Placeholder for unique constraint
+                bill_reference_no=bill_ref or trans_id, # Must be unique
+                checkout_request_id=f"C2B-{trans_id}"
             )
 
             # Update order status if order found

@@ -73,6 +73,7 @@ export const useOrderStore = defineStore('order', () => {
     try {
       const order = await api.get(`/orders/orders/${orderId}/`)
       currentOrder.value = order
+      updateOrderInLists(order)
       return { success: true, order }
     } catch (err) {
       error.value = err.message || 'Failed to fetch order'
@@ -216,18 +217,22 @@ export const useOrderStore = defineStore('order', () => {
     error.value = null
 
     try {
-      const response = await api.get(`/orders/orders/${orderId}/mpesa-status/`)
+      const response = await api.get(`/payments/check-status/${orderId}/`)
       
-      // Update order in lists if status changed
-      if (response.order) {
-        updateOrderInLists(response.order)
+      // If payment is successful, refresh the order to update its status in lists
+      if (response.status === 'SUCCESS' || response.order_status === 'paid') {
+        await fetchOrder(orderId)
+        // updateOrderInLists is called inside fetchOrder if currentOrder is updated, 
+        // but we should ensure it's updated in all lists.
+        const updatedOrder = currentOrder.value
+        if (updatedOrder) updateOrderInLists(updatedOrder)
       }
 
       return {
         success: true,
         status: response.status,
-        order: response.order,
-        message: response.message,
+        message: response.status === 'SUCCESS' ? 'Payment confirmed!' : `Current status: ${response.status}`,
+        order_status: response.order_status
       }
     } catch (err) {
       error.value = err.message || 'Failed to check M-Pesa status'
@@ -248,13 +253,13 @@ export const useOrderStore = defineStore('order', () => {
       const response = await api.post('/payments/initiate-stk-push/', {
         order_id: orderId,
         phone_number: phoneNumber,
-        transaction_type: 'SALES'
       })
 
       return {
         success: true,
         message: response.message,
         checkout_request_id: response.checkout_request_id,
+        is_duplicate: response.is_duplicate,
       }
     } catch (err) {
       error.value = err.data?.error || err.message || 'Failed to initiate STK Push'

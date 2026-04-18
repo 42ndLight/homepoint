@@ -349,16 +349,27 @@ const checkMpesaStatus = async (orderId) => {
 }
 
 const initiateStk = async (order) => {
+  if (initiatingStkId.value === order.id) return // Prevent multiple clicks for same order
+  
   initiatingStkId.value = order.id
   try {
     const res = await orderStore.initiateStkPush(order.id, order.phone_number)
     if (res.success) {
-      toast.add({ 
-        severity: 'success', 
-        summary: 'STK Push Sent', 
-        detail: 'Prompt sent to customer phone. Ask them to enter their PIN.', 
-        life: 5000 
-      })
+      if (res.is_duplicate) {
+        toast.add({ 
+          severity: 'info', 
+          summary: 'Pending Payment', 
+          detail: res.message, 
+          life: 5000 
+        })
+      } else {
+        toast.add({ 
+          severity: 'success', 
+          summary: 'STK Push Sent', 
+          detail: 'Prompt sent to customer phone. Ask them to enter their PIN.', 
+          life: 5000 
+        })
+      }
     } else {
       toast.add({ severity: 'error', summary: 'STK Push Failed', detail: res.error, life: 3000 })
     }

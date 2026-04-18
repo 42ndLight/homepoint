@@ -3,7 +3,8 @@ from payments.views.mpesa_transactions_view import (
     mpesa_confirmation_url, 
     mpesa_validation,
     initiate_stk_push,
-    stk_callback
+    stk_callback,
+    check_order_payment_status
 )
 from payments.views.cash_transactions_view import CashTransactionCreateView
 from payments.views.transactions_views import TransactionHistoryListView
@@ -21,4 +22,5 @@ urlpatterns = [
     # M-Pesa Express (STK Push)
     path('initiate-stk-push/', initiate_stk_push, name='initiate-stk-push'),
     path('stk-callback/', stk_callback, name='stk-callback'),
+    path('check-status/<int:order_id>/', check_order_payment_status, name='check-payment-status'),
 ]

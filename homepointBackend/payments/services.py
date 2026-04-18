@@ -121,6 +121,7 @@ def record_mpesa_initiated(order, amount, phone_number, checkout_request_id, use
         balance_after=mpesa.balance,  # snapshot, will be wrong until confirmed — acceptable
         order=order,
         checkout_request_id=checkout_request_id,
+        bill_reference_no=checkout_request_id, # Ensure uniqueness
         phone_number=phone_number,
         status='PENDING',
     )
