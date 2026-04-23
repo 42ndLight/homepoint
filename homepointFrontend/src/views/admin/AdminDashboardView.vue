@@ -107,21 +107,7 @@
 
       <!-- Store Details Tab -->
       <TabPanel value="Store Details" leftIcon="pi pi-cog">
-        <div class="p-4">
-          <div class="bg-amber-50 border-l-4 border-amber-600 p-4 rounded">
-            <p class="text-amber-800 font-semibold">⚙️ Store Details & Settings</p>
-            <p class="text-amber-700 text-sm mt-2">
-              Configure store information and system settings. Features coming soon:
-            </p>
-            <ul class="text-amber-700 text-sm mt-2 ml-4 list-disc">
-              <li>Store information (name, address, phone)</li>
-              <li>Tax configuration (TIN, VAT rates)</li>
-              <li>Currency and locale settings</li>
-              <li>System preferences and defaults</li>
-              <li>Backup and data management</li>
-            </ul>
-          </div>
-        </div>
+        <StoreDetailsPanel />
       </TabPanel>
     </TabPanels>
     </Tabs>
@@ -142,6 +128,7 @@ import ProductSalesChart from '@/components/admin/ProductSalesChart.vue'
 import AnalyticsService from '@/services/analyticsService'
 import InventoryControlPanel from '@/components/admin/InventoryControlPanel.vue'
 import TransactionLogsPanel from '@/components/admin/TransactionLogsPanel.vue'
+import StoreDetailsPanel from '@/components/admin/StoreDetailsPanel.vue'
 
 const isLoading = ref(false)
 const error = ref(null)
