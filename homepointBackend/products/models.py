@@ -35,6 +35,11 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='products/', null=True, blank=True)
+
 class Variant(models.Model):
     UNIT_CHOICES = [
         ('piece', 'Per Piece'),  # e.g., doors
@@ -61,6 +66,10 @@ class Variant(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
+
+class VariantImage(models.Model):
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='variants/', null=True, blank=True)
 
 class Inventory(models.Model):
     variant = models.OneToOneField(Variant, on_delete=models.CASCADE, related_name='inventory')
