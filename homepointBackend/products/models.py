@@ -37,7 +37,7 @@ class Product(models.Model):
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images', null=True, blank=True)
     image = models.ImageField(upload_to='products/', null=True, blank=True)
 
 class Variant(models.Model):
@@ -68,7 +68,7 @@ class Variant(models.Model):
         return f"{self.product.name} - {self.sku}"
 
 class VariantImage(models.Model):
-    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name='images')
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name='images', null=True, blank=True)
     image = models.ImageField(upload_to='variants/', null=True, blank=True)
 
 class Inventory(models.Model):
