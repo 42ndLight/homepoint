@@ -83,13 +83,23 @@ export function formatQuantity(quantity, unitType = 'piece') {
 }
 
 /**
- * Get store information (from env or defaults)
+ * Get store information (prioritize localStorage, fallback to env or defaults)
  */
 export function getStoreInfo() {
+  const saved = localStorage.getItem('store_settings')
+  if (saved) {
+    try {
+      return JSON.parse(saved)
+    } catch (e) {
+      console.error('Failed to parse saved store settings', e)
+    }
+  }
+
   return {
     name: import.meta.env.VITE_STORE_NAME || 'HOMEPOINT HARDWARE STORE',
     address: import.meta.env.VITE_STORE_ADDRESS || 'Nairobi, Kenya',
     tin: import.meta.env.VITE_STORE_TIN || '118184471',
     phone: import.meta.env.VITE_STORE_PHONE || '+254 700 000000',
+    pin: 'A00XXXXXXXXX',
   }
 }

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, Variant, Inventory
+from .models import Category, Product, Variant, Inventory, StockMovement, VariantImage, ProductImage
 
 
 @admin.register(Category)
@@ -51,3 +51,7 @@ class InventoryAdmin(admin.ModelAdmin):
     list_display = ['variant', 'quantity', 'is_low_stock', 'last_updated', 'location']
     list_filter = ['last_updated']
     search_fields = ['variant__sku', 'variant__product__name']
+
+admin.site.register(StockMovement)
+admin.site.register(ProductImage)
+admin.site.register(VariantImage)

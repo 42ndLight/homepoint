@@ -73,6 +73,7 @@ export const useOrderStore = defineStore('order', () => {
     try {
       const order = await api.get(`/orders/orders/${orderId}/`)
       currentOrder.value = order
+      updateOrderInLists(order)
       return { success: true, order }
     } catch (err) {
       error.value = err.message || 'Failed to fetch order'
@@ -82,16 +83,63 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
-  const fetchOrderHistory = async () => {
+  const fetchOrderHistory = async (params = {}) => {
     loading.value = true
     error.value = null
 
     try {
-      const orders = await api.get('/orders/orders/')
-      orderHistory.value = orders.results || orders
-      return { success: true, orders: orderHistory.value }
+      const queryParams = new URLSearchParams()
+      if (params.search) queryParams.append('search', params.search)
+      if (params.start_date) queryParams.append('start_date', params.start_date)
+      if (params.end_date) queryParams.append('end_date', params.end_date)
+      if (params.status) queryParams.append('status', params.status)
+      if (params.limit) queryParams.append('limit', params.limit)
+      if (params.offset) queryParams.append('offset', params.offset)
+
+      const queryString = queryParams.toString()
+      const endpoint = `/orders/orders/${queryString ? '?' + queryString : ''}`
+
+      const response = await api.get(endpoint)
+      
+      if (Array.isArray(response)) {
+        orderHistory.value = response
+      } else if (response.results) {
+        orderHistory.value = response.results
+      } else {
+        orderHistory.value = []
+      }
+      
+      return { 
+        success: true, 
+        orders: orderHistory.value,
+        count: response.count || orderHistory.value.length
+      }
     } catch (err) {
       error.value = err.message || 'Failed to fetch order history'
+      return { success: false, error: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteOrder = async (orderId) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      await api.delete(`/orders/orders/${orderId}/`)
+      
+      // Remove from history and pending lists
+      orderHistory.value = orderHistory.value.filter(o => o.id !== orderId)
+      pendingOrders.value = pendingOrders.value.filter(o => o.id !== orderId)
+      
+      if (currentOrder.value?.id === orderId) {
+        currentOrder.value = null
+      }
+      
+      return { success: true }
+    } catch (err) {
+      error.value = err.message || 'Failed to delete order'
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -169,21 +217,52 @@ export const useOrderStore = defineStore('order', () => {
     error.value = null
 
     try {
-      const response = await api.get(`/orders/orders/${orderId}/mpesa-status/`)
+      const response = await api.get(`/payments/check-status/${orderId}/`)
       
-      // Update order in lists if status changed
-      if (response.order) {
-        updateOrderInLists(response.order)
+      // If payment is successful, refresh the order to update its status in lists
+      if (response.status === 'SUCCESS' || response.order_status === 'paid') {
+        await fetchOrder(orderId)
+        // updateOrderInLists is called inside fetchOrder if currentOrder is updated, 
+        // but we should ensure it's updated in all lists.
+        const updatedOrder = currentOrder.value
+        if (updatedOrder) updateOrderInLists(updatedOrder)
       }
 
       return {
         success: true,
         status: response.status,
-        order: response.order,
-        message: response.message,
+        message: response.status === 'SUCCESS' ? 'Payment confirmed!' : `Current status: ${response.status}`,
+        order_status: response.order_status
       }
     } catch (err) {
       error.value = err.message || 'Failed to check M-Pesa status'
+      return {
+        success: false,
+        error: error.value,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const initiateStkPush = async (orderId, phoneNumber) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post('/payments/initiate-stk-push/', {
+        order_id: orderId,
+        phone_number: phoneNumber,
+      })
+
+      return {
+        success: true,
+        message: response.message,
+        checkout_request_id: response.checkout_request_id,
+        is_duplicate: response.is_duplicate,
+      }
+    } catch (err) {
+      error.value = err.data?.error || err.message || 'Failed to initiate STK Push'
       return {
         success: false,
         error: error.value,
@@ -228,6 +307,40 @@ export const useOrderStore = defineStore('order', () => {
     error.value = null
   }
 
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+      shipped: 'bg-blue-100 text-blue-800',
+      delivered: 'bg-green-100 text-green-800',
+      processing: 'bg-blue-100 text-blue-800',
+    }
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+  }
+
+  const formatOrder = (order) => {
+    if (!order) return null
+    return {
+      ...order,
+      formattedDate: new Date(order.created_at).toLocaleDateString('en-KE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
+      formattedTime: new Date(order.created_at).toLocaleTimeString('en-KE', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      formattedAmount: new Intl.NumberFormat('en-KE', {
+        style: 'currency',
+        currency: 'KES',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(order.total_amount || 0),
+    }
+  }
+
   return {
     // State
     currentOrder,
@@ -250,7 +363,13 @@ export const useOrderStore = defineStore('order', () => {
     completeMpesaPayment,
     completeCashPayment,
     checkMpesaPaymentStatus,
+    deleteOrder,
+    initiateStkPush,
     clearCurrentOrder,
     clearError,
+    
+    // UI Helpers
+    getStatusColor,
+    formatOrder
   }
 })

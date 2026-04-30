@@ -41,6 +41,8 @@ MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY')
 MPESA_CONSUMER_SECRET = os.getenv('MPESA_CONSUMER_SECRET')
 MPESA_BASE_URL = os.getenv('MPESA_BASE_URL')
 MPESA_SHORTCODE = os.getenv('MPESA_SHORTCODE')
+MPESA_PASSKEY = os.getenv('MPESA_PASSKEY')
+
 
 # Application definition
 
@@ -100,11 +102,13 @@ WSGI_APPLICATION = 'homepointBackend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE':'django.db.backends.{}'.format(
+             os.getenv('DB_ENGINE', 'postgres')
+         ),
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
         'PASSWORD': os.environ.get('DB_PASSWORD'), 
-        'HOST': os.environ.get('DB_HOST'),
+        'HOST': os.environ.get('localhost'), # 'DB_HOST', localhost
         'PORT': os.environ.get('DB_PORT'),
     }
 }
@@ -184,3 +188,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

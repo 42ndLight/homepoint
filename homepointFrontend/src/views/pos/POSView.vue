@@ -52,11 +52,29 @@
       </div>
     </div>
 
-    <!-- Right: Cart panel -->
-    <div class="w-96 flex-shrink-0">
-      <CartPanel
-        @checkout="handleCheckout"
-         />
+    <!-- Right: Cart panel & Orders -->
+    <div class="w-96 flex-shrink-0 flex flex-col gap-3">
+      <div class="flex-1 min-h-0">
+        <CartPanel
+          @checkout="handleCheckout"
+        />
+      </div>
+      
+      <Button
+        label="Orders"
+        icon="pi pi-receipt"
+        severity="secondary"
+        outlined
+        class="relative w-full py-4 bg-white font-semibold"
+        @click="showOrdersSidebar = true"
+      >
+        <Badge
+          v-if="pendingCount > 0"
+          :value="pendingCount"
+          severity="warn"
+          class="absolute -top-2 -right-2"
+        />
+      </Button>
     </div>
 
     <Dialog
@@ -76,24 +94,6 @@
       v-model="showCheckout"
       @order-complete="handleOrderComplete"
     />
-
-    <div class="fixed bottom-6 right-6 z-30">
-      <Button
-        label="Orders"
-        icon="pi pi-receipt"
-        severity="secondary"
-        outlined
-        class="relative"
-        @click="showOrdersSidebar = true"
-      >
-        <Badge
-          v-if="pendingCount > 0"
-          :value="pendingCount"
-          severity="warn"
-          class="absolute -top-2 -right-2"
-        />
-      </Button>
-    </div>
 
     <OrdersSidebar v-model="showOrdersSidebar" />
   </div>
@@ -187,5 +187,8 @@ const handleOrderComplete = (order) => {
   showOrdersSidebar.value = true
 }
 
-onMounted(loadSellableItems)
+onMounted(() => {
+  loadSellableItems()
+  orderStore.fetchOrderHistory()
+})
 </script>

@@ -1,60 +1,40 @@
 <template>
-  <div class="trust-section py-12 md:py-16 bg-white border-t border-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h2 class="text-2xl font-bold text-gray-900 text-center mb-12">Why Choose Homepoint?</h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Trust Factor 1: Fast Delivery -->
-        <div class="flex flex-col items-center text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <span class="text-3xl">🚚</span>
-          </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">Fast Delivery</h3>
-          <p class="text-gray-600 text-sm leading-relaxed">
-            Same-day and next-day delivery available for orders in Nairobi and surrounding areas
-          </p>
-        </div>
-
-        <!-- Trust Factor 2: Quality Materials -->
-        <div class="flex flex-col items-center text-center">
-          <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-            <span class="text-3xl">✅</span>
-          </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">Quality Materials</h3>
-          <p class="text-gray-600 text-sm leading-relaxed">
-            Sourced from trusted suppliers ensuring durability and compliance with building standards
-          </p>
-        </div>
-
-        <!-- Trust Factor 3: Reliable Availability -->
-        <div class="flex flex-col items-center text-center">
-          <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-            <span class="text-3xl">📦</span>
-          </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">Reliable Availability</h3>
-          <p class="text-gray-600 text-sm leading-relaxed">
-            Consistent stock levels for all major materials. Real-time inventory updates
-          </p>
-        </div>
-      </div>
-
-      <!-- Optional: Additional features -->
-      <div class="mt-12 pt-12 border-t border-gray-100">
-        <p class="text-gray-600 text-center text-sm max-w-2xl mx-auto">
-          Trusted by contractors and fundis across Kenya. Join hundreds of happy customers who rely on Homepoint
-          for their construction material needs.
-        </p>
-      </div>
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="p-6 border-b border-gray-100">
+      <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="pi pi-users text-blue-600"></i>
+        Role Definitions & Permissions
+      </h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
+            <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
+            <th class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Permissions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr v-for="role in roles" :key="role.name">
+            <td class="px-6 py-4 font-bold text-gray-900">{{ role.name }}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">{{ role.description }}</td>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap gap-1">
+                <span v-for="perm in role.permissions" :key="perm" class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                  {{ perm }}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
 
 <script setup>
-// No props or emits for trust section
+defineProps({
+  roles: Array
+})
 </script>
-
-<style scoped>
-.trust-section {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(255, 255, 255, 0) 100%);
-}
-</style>

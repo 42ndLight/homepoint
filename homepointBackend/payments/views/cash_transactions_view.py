@@ -6,7 +6,7 @@ from payments.models import CashTransaction
 from payments.services import record_cash_sale, record_expense, record_deposit, record_withdrawal
 from django.db import transaction as db_transaction
 
-from payments.utils import get_mpesa_access_token
+
 from products.permissions import IsWarehouseStaff
 from payments.serializers import CashRecordSerializer
 

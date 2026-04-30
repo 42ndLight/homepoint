@@ -7,9 +7,16 @@
     </div>
 
     <!-- Tabs Container -->
-    <TabView>
+    <Tabs value="Sales & Reports">
+      <TabList>
+              <Tab value="Sales & Reports">Sales & Reports</Tab>
+              <Tab value="Transaction Logs">Transaction Logs</Tab>
+              <Tab value="Inventory Control">Inventory Control</Tab>
+              <Tab value="Store Details">Store Details</Tab>
+          </TabList>
       <!-- Sales & Reporting Tab -->
-      <TabPanel header="Sales & Reports" leftIcon="pi pi-chart-bar">
+      <TabPanels>
+      <TabPanel value="Sales & Reports" leftIcon="pi pi-chart-bar">
         <div class="p-4">
           <!-- Date Range Filter -->
           <DateRangeFilter @filter-change="handleFilterChange" />
@@ -89,73 +96,39 @@
       </TabPanel>
 
       <!-- Staff Management Tab -->
-      <TabPanel header="Staff Management" leftIcon="pi pi-users">
-        <div class="p-4">
-          <div class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
-            <p class="text-blue-800 font-semibold">👥 Staff Management Module</p>
-            <p class="text-blue-700 text-sm mt-2">
-              Manage staff accounts, roles, and permissions. Features coming soon:
-            </p>
-            <ul class="text-blue-700 text-sm mt-2 ml-4 list-disc">
-              <li>Create/edit staff accounts</li>
-              <li>Assign roles and permissions</li>
-              <li>Track staff performance</li>
-              <li>Manage shifts and schedules</li>
-            </ul>
-          </div>
-        </div>
+      <TabPanel value="Transaction Logs" leftIcon="pi pi-receipt">
+        <TransactionLogsPanel />
       </TabPanel>
 
       <!-- Inventory Control Tab -->
-      <TabPanel header="Inventory Control" leftIcon="pi pi-box">
-        <div class="p-4">
-          <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded">
-            <p class="text-purple-800 font-semibold">📦 Inventory Control Module</p>
-            <p class="text-purple-700 text-sm mt-2">
-              Manage product inventory and stock levels. Features coming soon:
-            </p>
-            <ul class="text-purple-700 text-sm mt-2 ml-4 list-disc">
-              <li>View all products and stock levels</li>
-              <li>Adjust stock quantities (Staff limited, Admin full control)</li>
-              <li>Set reorder points and alerts</li>
-              <li>Track inventory movements</li>
-              <li>Generate stock reports</li>
-            </ul>
-          </div>
-        </div>
+      <TabPanel value="Inventory Control" leftIcon="pi pi-box">
+        <InventoryControlPanel />
       </TabPanel>
 
       <!-- Store Details Tab -->
-      <TabPanel header="Store Details" leftIcon="pi pi-cog">
-        <div class="p-4">
-          <div class="bg-amber-50 border-l-4 border-amber-600 p-4 rounded">
-            <p class="text-amber-800 font-semibold">⚙️ Store Details & Settings</p>
-            <p class="text-amber-700 text-sm mt-2">
-              Configure store information and system settings. Features coming soon:
-            </p>
-            <ul class="text-amber-700 text-sm mt-2 ml-4 list-disc">
-              <li>Store information (name, address, phone)</li>
-              <li>Tax configuration (TIN, VAT rates)</li>
-              <li>Currency and locale settings</li>
-              <li>System preferences and defaults</li>
-              <li>Backup and data management</li>
-            </ul>
-          </div>
-        </div>
+      <TabPanel value="Store Details" leftIcon="pi pi-cog">
+        <StoreDetailsPanel />
       </TabPanel>
-    </TabView>
+    </TabPanels>
+    </Tabs>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
+import Tabs from 'primevue/tabs';
+import TabList from 'primevue/tablist';
+import Tab from 'primevue/tab';
+import TabPanels from 'primevue/tabpanels';
+import TabPanel from 'primevue/tabpanel';
 import DateRangeFilter from '@/components/admin/DateRangeFilter.vue'
 import SalesSummary from '@/components/admin/SalesSummary.vue'
 import SalesChart from '@/components/admin/SalesChart.vue'
 import ProductSalesChart from '@/components/admin/ProductSalesChart.vue'
 import AnalyticsService from '@/services/analyticsService'
+import InventoryControlPanel from '@/components/admin/InventoryControlPanel.vue'
+import TransactionLogsPanel from '@/components/admin/TransactionLogsPanel.vue'
+import StoreDetailsPanel from '@/components/admin/StoreDetailsPanel.vue'
 
 const isLoading = ref(false)
 const error = ref(null)

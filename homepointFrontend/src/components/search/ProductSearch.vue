@@ -20,20 +20,15 @@
     >
       <div class="space-y-2">
         <div
-          v-for="product in searchResults"
-          :key="product.id"
-          class="p-2 hover:bg-gray-100 cursor-pointer rounded"
-          @click="handleSelectProduct(product)"
+          v-for="item in searchResults"
+          :key="item.id"
+          class="p-2 hover:bg-gray-100 cursor-pointer rounded border-b border-gray-100 last:border-0"
+          @click="handleSelectProduct(item)"
         >
-          <div class="font-semibold" v-html="highlightMatch(product.name, searchQuery)"></div>
-          <div class="text-sm text-gray-600">
-            <span v-if="product.category">{{ product.category.name }}</span>
-            <span v-if="product.variants && product.variants.length > 0" class="ml-2">
-              - KES {{ formatPrice(getMinPrice(product)) }}
-            </span>
-          </div>
-          <div v-if="product.variants && product.variants.length > 0" class="text-xs text-gray-500 mt-1">
-            SKU: {{ product.variants.map(v => v.sku).join(', ') }}
+          <div class="font-semibold" v-html="highlightMatch(item.display_name || item.name, searchQuery)"></div>
+          <div class="flex justify-between items-center text-sm text-gray-600 mt-1">
+            <span class="font-mono text-xs">SKU: {{ item.sku }}</span>
+            <span class="font-bold text-primary-600">KES {{ formatPrice(item.price) }}</span>
           </div>
         </div>
       </div>
@@ -85,20 +80,10 @@ const handleBlur = () => {
   }, 200)
 }
 
-const handleSelectProduct = (product) => {
-  // If product has variants, add first variant
-  if (product.variants && product.variants.length > 0) {
-    const variant = product.variants[0]
-    cartStore.addItem(variant, 1)
-    toast.add({
-      severity: 'success',
-      summary: 'Added to Cart',
-      detail: `${product.name} added to cart`,
-      life: 2000,
-    })
-  }
-  
-  emit('select', product)
+const handleSelectProduct = (item) => {
+  // Emit the specific variant/item to the parent (POSView)
+  // Parent handles cartStore.addItem(item, 1) and toast notifications
+  emit('select', item)
   searchQuery.value = ''
   showResults.value = false
 }
@@ -106,13 +91,6 @@ const handleSelectProduct = (product) => {
 const formatPrice = (price) => {
   if (!price) return '0.00'
   return Number.parseFloat(price).toFixed(2)
-}
-
-const getMinPrice = (product) => {
-  if (!product.variants || product.variants.length === 0) {
-    return product.base_price
-  }
-  return Math.min(...product.variants.map(v => Number.parseFloat(v.price)))
 }
 
 onMounted(() => {

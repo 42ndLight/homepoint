@@ -1,5 +1,3 @@
-# mpesa_utils.py
-
 import logging
 import requests
 from django.conf import settings
@@ -53,8 +51,7 @@ def get_mpesa_access_token():
 
     except Exception:
         logger.exception("Unexpected error in M-Pesa token generation")
-        raise
-
+        raise 
 
 
 

@@ -1,43 +1,57 @@
 from django.db.models import Q
-from rest_framework import viewsets, filters, status
-from rest_framework.decorators import permission_classes
+from rest_framework import viewsets, filters, status, mixins
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import F
-from .permissions import IsWarehouseStaff, ReadOnly
+from .permissions import IsWarehouseStaff
 from .models import Category, Product, Variant, Inventory, StockMovement
 from .serializers import (
     CategorySerializer, ProductSerializer,
     VariantSerializer, InventorySerializer, get_user_role
 )
 
-# Custom permission: Read-only for everyone, full CRUD for admins
-class ReadOnlyOrAdmin(viewsets.ModelViewSet):
+class BaseProductViewSet(viewsets.GenericViewSet):
+    """
+    Base ViewSet for products that handles permissions and context logic.
+    Read-only for authenticated users, full CRUD for admins and warehouse staff.
+    """
     def get_permissions(self):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
             return [IsAuthenticated()]
-        # Fix: use class references, not instances, for | operator
-        return [IsAdminUser | IsWarehouseStaff()]
+        # Use class references for bitwise operator |
+        return [(IsAdminUser | IsWarehouseStaff)()]
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['role'] = get_user_role(self.request)   # inject role for field stripping
+        context['role'] = get_user_role(self.request)
         return context
 
+class FullCRUDViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.UpdateModelMixin,
+                      mixins.DestroyModelMixin,
+                      mixins.ListModelMixin,
+                      BaseProductViewSet):
+    """
+    Generic ViewSet that provides standard CRUD actions.
+    """
+    pass
 
-class CategoryViewSet(ReadOnlyOrAdmin):
+
+class CategoryViewSet(FullCRUDViewSet):
     queryset = Category.objects.all().prefetch_related(
         'products__variants__inventory' 
     )
     serializer_class = CategorySerializer
-    lookup_field = 'slug'  # Optional: use slug instead of id for nicer URLs
+    lookup_field = 'slug'
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
 
-class ProductViewSet(ReadOnlyOrAdmin):
+class ProductViewSet(FullCRUDViewSet):
     queryset = Product.objects.filter(is_active=True).prefetch_related(
         'variants__inventory'
     )
@@ -61,23 +75,22 @@ class ProductViewSet(ReadOnlyOrAdmin):
         return queryset
 
 
-class VariantViewSet(ReadOnlyOrAdmin):
+class VariantViewSet(FullCRUDViewSet):
     queryset = Variant.objects.select_related('product').prefetch_related('inventory')
     serializer_class = VariantSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'attributes']
 
 
-class InventoryViewSet(viewsets.ViewSet):
+class InventoryViewSet(mixins.RetrieveModelMixin,
+                       mixins.UpdateModelMixin,
+                       BaseProductViewSet):
     """
     Simple endpoint for stock checks (public read) and admin updates.
-    GET  /api/inventory/<variant_id>/   → public stock quantity
-    PATCH /api/inventory/<variant_id>/ → admin only: update stock
+    GET   /api/inventory/<variant_id>/   → public stock quantity
+    PATCH /api/inventory/<variant_id>/   → admin only: update stock
     """
-    def get_permissions(self):
-        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [IsAuthenticated()]
-        return [IsAdminUser | IsWarehouseStaff()]
+    serializer_class = InventorySerializer
 
     def retrieve(self, request, pk=None):
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)
@@ -85,40 +98,37 @@ class InventoryViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def partial_update(self, request, pk=None):
-        
+        """
+        Custom partial update logic for inventory movement.
+        """
         variant = get_object_or_404(Variant.objects.select_related('inventory'), pk=pk)
         inventory = variant.inventory
-        serializer = InventorySerializer(variant.inventory, data=request.data, partial=True, context={'request': request})
+        serializer = InventorySerializer(inventory, data=request.data, partial=True, context={'request': request})
 
         if serializer.is_valid():
+            with transaction.atomic():
+                change = serializer.validated_data['change_amount']
+                m_type = serializer.validated_data['movement_type']
+
+                if m_type == "IN":
+                    inventory.quantity = F('quantity') + change
+                else:
+                    inventory.quantity = F('quantity') - change
                 
-                with transaction.atomic():
-                            change = serializer.validated_data['change_amount']
-                            m_type = serializer.validated_data['movement_type']
+                inventory.save()
+                
+                StockMovement.objects.create(
+                    inventory=inventory,
+                    variant=variant,
+                    user=request.user,
+                    change_amount=change,
+                    movement_type=m_type,
+                    reason=request.data.get('reason', '')
+                )
 
-                            if m_type == "IN":
-                                inventory.quantity = F('quantity') + change
-                            else:
-                                inventory.quantity = F('quantity') - change
-                            
-                            inventory.save()
-                            
-                            # 4. Create the Log
-                            StockMovement.objects.create(
-                                inventory=inventory,
-                                variant=variant,
-                                user=request.user,
-                                change_amount=change,
-                                movement_type=m_type,
-                                reason=request.data.get('reason', '')
-                            )
+                inventory.refresh_from_db()
 
-                        # Refresh from DB to get the new calculated quantity for the response
-                            inventory.refresh_from_db()
-
-                serializer = InventorySerializer(inventory)
-                return Response(serializer.data)
+            serializer = InventorySerializer(inventory)
+            return Response(serializer.data)
         
-        
-        
-        return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from .models import Transaction, MpesaTransaction, CashTransaction, Account
+from .models import (
+    Transaction, MpesaTransaction, CashTransaction, Account,
+    SaleTransaction, ExpenseTransaction, DepositWithdrawal
+)
 from orders.models import Order  # assuming you have this
 
 
@@ -13,7 +16,9 @@ class TransactionHistorySerializer(serializers.ModelSerializer):
     transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
     movement_type_display = serializers.CharField(source='get_movement_type_display', read_only=True)
     order_id = serializers.PrimaryKeyRelatedField(source='order', read_only=True)
-    order_number = serializers.CharField(source='order.id', read_only=True)  # or custom order number
+    order_number = serializers.CharField(source='order.id', read_only=True)
+    order_status = serializers.CharField(source='order.status', read_only=True)
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -22,9 +27,13 @@ class TransactionHistorySerializer(serializers.ModelSerializer):
             'transaction_type', 'transaction_type_display',
             'amount', 'balance_after',
             'timestamp', 'reference_id', 'notes',
-            'order_id', 'order_number',
+            'order_id', 'order_number', 'order_status', 'status',
         ]
         read_only_fields = fields  # enforce read-only
+
+    def get_status(self, obj):
+        # Return status if it exists on subclass (e.g. MpesaTransaction)
+        return getattr(obj, 'status', None)
 
 
 class MpesaCheckoutSerializer(serializers.ModelSerializer):
@@ -43,14 +52,13 @@ class MpesaCheckoutSerializer(serializers.ModelSerializer):
         decimal_places=2,
         read_only=True
     )
-    phone_number = serializers.CharField(max_length=15, required=True)
-    transaction_type = serializers.ChoiceField(choices=Transaction.TYPE_CHOICES, write_only=True)    
+    phone_number = serializers.CharField(max_length=15, required=True)    
     reference_id = serializers.CharField(max_length=100, required=False, write_only=True)
     
 
     class Meta:
         model = MpesaTransaction
-        fields = ['phone_number', 'order_id', 'order_total_amount', 'transaction_type', 'reference_id']
+        fields = ['phone_number', 'order_id', 'order_total_amount', 'reference_id']
 
     def validate(self, data):
         order = data['order']
@@ -73,14 +81,19 @@ class CashRecordSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
     transaction_type = serializers.ChoiceField(choices=Transaction.TYPE_CHOICES, write_only=True)
     
-    reference_id = serializers.CharField(max_length=100, required=False, write_only=True)
+    reference_id = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
+    
+    # Extra fields for specific transaction types (handled in view/service)
+    category = serializers.CharField(max_length=20, required=False, allow_blank=True, write_only=True)
+    supplier = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = CashTransaction
         fields = [
             'amount', 'order_id', 'transaction_type', 
-            'reference_id', 'receipt_number',
-            'recorded_by', 'created_at',            
+            'reference_id', 'receipt_number', 'notes',
+            'recorded_by', 'created_at',
+            'category', 'supplier',
         ]
         read_only_fields = ['recorded_by', 'created_at']
 
@@ -101,3 +114,44 @@ class CashRecordSerializer(serializers.ModelSerializer):
         # Here we just prepare data – real creation happens in view
 
         return validated_data
+
+
+'''class SaleTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleTransaction
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'order', 'payment_method'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class ExpenseTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseTransaction
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'category', 'supplier', 'approved_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class DepositTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositWithdrawal
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'destination_account', 'authorized_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']
+
+class WithdrawalTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositWithdrawal
+        fields = [
+            'id', 'account', 'user', 'movement_type', 'transaction_type',
+            'amount', 'balance_after', 'timestamp', 'reference_id', 'notes',
+            'destination_account', 'authorized_by'
+        ]
+        read_only_fields = ['balance_after', 'timestamp']'''

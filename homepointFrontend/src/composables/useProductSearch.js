@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import Fuse from 'fuse.js'
-import { getProducts } from '@/services/dbService'
+import { getSellableItems } from '@/services/dbService'
 
 export const useProductSearch = () => {
   const searchQuery = ref('')
@@ -8,22 +8,22 @@ export const useProductSearch = () => {
   const fuse = ref(null)
   const loading = ref(false)
 
-  // Initialize Fuse.js with products
+  // Initialize Fuse.js with sellable items
   const initializeSearch = async () => {
     loading.value = true
     try {
-      products.value = await getProducts()
+      products.value = await getSellableItems()
       
       // Configure Fuse.js options
       const options = {
         keys: [
           'name',
-          'description',
-          'category.name',
-          'variants.sku',
-          'variants.attributes',
+          'display_name',
+          'sku',
+          'item_code',
+          'attributes',
         ],
-        threshold: 0.3, // Fuzzy matching threshold (0.0 = exact match, 1.0 = match anything)
+        threshold: 0.3,
         includeScore: true,
         minMatchCharLength: 2,
       }

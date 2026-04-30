@@ -18,13 +18,14 @@ class OrderItemSerializer(serializers.ModelSerializer):
     )
     item_code = serializers.CharField(source='variant.item_code', read_only=True)
     tax_type = serializers.CharField(source='variant.tax_type', read_only=True)
+    product_name = serializers.CharField(source='variant.product.name', read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             'variant_id', 'quantity', 'sku', 'unit_type', 'price',
             'net_amount', 'vat_amount', 'vat_rate',
-            'price_at_purchase', 'item_code','tax_type']
+            'price_at_purchase', 'item_code','tax_type', 'product_name']
         read_only_fields = ['price_at_purchase']
 
     def validate_quantity(self, value):

@@ -41,7 +41,7 @@ export const syncProducts = async () => {
         description: prod.description ?? '',
         base_price:  prod.base_price,
         is_active:   prod.is_active,
-        image:       prod.image ?? null,
+        image:       prod.images?.length > 0 ? prod.images[0].image : null,
         category_id: prod.category || null,
       })
 
@@ -52,6 +52,7 @@ export const syncProducts = async () => {
           sku:              v.sku,
           item_code:        v.item_code ?? v.sku,
           price:            Number.parseFloat(v.price ?? 0),
+          image:            v.images?.length > 0 ? v.images[0].image : null,
 
           // Staff-only fields — null when stripped by backend
           cost_price:       v.cost_price      != null ? Number.parseFloat(v.cost_price) : null,
@@ -140,7 +141,7 @@ export const getSellableItems = async () => {
         item_code:    variant.item_code,
         name:         parent.name,
         display_name: displayName.trim(),
-        image:        parent.image ?? null,
+        image:        variant.image || parent.image || null,
         price:        variant.price,
         cost_price:   variant.cost_price,      // null for cashiers — POS won't show it
         stock_status:    variant.stock_status, // always safe to show
@@ -176,7 +177,7 @@ export const getProductBySKU = async (sku) => {
       ...variant,
       name:         parent.name,
       display_name: attrSuffix ? `${parent.name} • ${attrSuffix}` : parent.name,
-      image:        parent.image ?? null,
+      image:        variant.image || parent.image || null,
     }
   } catch (error) {
     console.error('getProductBySKU failed:', error)
@@ -190,7 +191,7 @@ export const getProductBySKU = async (sku) => {
 
 export const searchProducts = async (query) => {
   try {
-    if (!query?.trim()) return getProducts()
+    if (!query?.trim()) return getSellableItems()
 
     const term = query.toLowerCase().trim()
 
