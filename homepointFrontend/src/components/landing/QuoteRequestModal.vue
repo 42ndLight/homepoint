@@ -16,8 +16,9 @@
       <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
         <!-- Contact Information -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+          <label for="quote-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
           <input
+            id="quote-name"
             v-model="form.name"
             type="text"
             required
@@ -27,8 +28,9 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+          <label for="quote-email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
           <input
+            id="quote-email"
             v-model="form.email"
             type="email"
             required
@@ -38,8 +40,9 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+          <label for="quote-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
           <input
+            id="quote-phone"
             v-model="form.phone"
             type="tel"
             required
@@ -50,7 +53,7 @@
 
         <!-- Selected Products (if any) -->
         <div v-if="selectedProducts.length > 0" class="border-t pt-4">
-          <label class="block text-sm font-medium text-gray-700 mb-3">Selected Materials</label>
+          <span class="block text-sm font-medium text-gray-700 mb-3">Selected Materials</span>
           <div class="space-y-2 bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
             <div v-for="product in selectedProducts" :key="product.id" class="flex items-center justify-between text-sm">
               <span class="text-gray-700">{{ product.name }}</span>
@@ -77,8 +80,9 @@
 
         <!-- Message -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Project Details</label>
+          <label for="quote-message" class="block text-sm font-medium text-gray-700 mb-1">Project Details</label>
           <textarea
+            id="quote-message"
             v-model="form.message"
             rows="3"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"

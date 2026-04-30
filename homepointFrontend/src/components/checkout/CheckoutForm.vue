@@ -59,9 +59,7 @@
         </div>
 
         <div class="field">
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Payment Method <span class="text-red-500">*</span>
-          </label>
+          <span class="block text-sm font-medium text-gray-700 mb-2">Payment Method <span class="text-red-500">*</span></span>
           <div class="flex gap-3">
             <div
               v-for="method in paymentMethods"
@@ -217,13 +215,13 @@ const paymentMethods = [
 ]
 
 const validatePhone = (phone) => {
-  const cleaned = phone.replace(/\s/g, '')
+  const cleaned = phone.replaceAll(/\s/g, '')
   const kenyanPattern = /^(?:254|\+254|0)?([17]\d{8})$/
   return kenyanPattern.test(cleaned)
 }
 
 const formatPhoneForAPI = (phone) => {
-  const cleaned = phone.replace(/\s/g, '').replace(/^\+/, '')
+  const cleaned = phone.replace(/\s/g, '').replaceAll(/^\+/, '')
   if (cleaned.startsWith('0')) {
     return '254' + cleaned.slice(1)
   }

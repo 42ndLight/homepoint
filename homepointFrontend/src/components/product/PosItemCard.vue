@@ -117,9 +117,22 @@ const isLowStock = computed(() => {
   return props.item.stock_status === 'low_stock'
 })
 
-const stockLabel    = computed(() => isOutOfStock.value ? 'Out of Stock' : isLowStock.value ? 'Low Stock' : 'In Stock')
-const stockSeverity = computed(() => isOutOfStock.value ? 'danger'      : isLowStock.value ? 'warn'      : 'success')
-const stockTextClass = computed(() => isOutOfStock.value ? 'text-red-600' : isLowStock.value ? 'text-orange-600 font-bold' : 'text-green-700')
+const stockLabel    = computed(() => {
+  if (isOutOfStock.value ) return 'Out of Stock'
+  if (isOutOfStock.value ) return 'Low Stock'
+    return 'In Stock' 
+})
+
+const stockSeverity = computed(() => {
+  if (isOutOfStock.value) return 'danger'
+  if (isLowStock.value) return 'warn'
+    return 'success'
+})
+
+const stockTextClass = computed(() => { 
+  if (isOutOfStock.value) return 'text-red-600'
+  if (isLowStock.value) return 'text-orange-600 font-bold'
+    return'text-green-700'})
 
 const handleAdd = () => {
   if (!isOutOfStock.value) emit('add-to-cart', props.item)

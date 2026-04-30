@@ -30,9 +30,9 @@ const formatChartData = () => {
   }
 
   const labels = props.dailyData.map((item) => item.date)
-  const revenues = props.dailyData.map((item) => parseFloat(item.total_sales) || 0)
-  const mpesaSales = props.dailyData.map((item) => parseFloat(item.mpesa_sales) || 0)
-  const cashSales = props.dailyData.map((item) => parseFloat(item.cash_sales) || 0)
+  const revenues = props.dailyData.map((item) => Number.parseFloat(item.total_sales) || 0)
+  const mpesaSales = props.dailyData.map((item) => Number.parseFloat(item.mpesa_sales) || 0)
+  const cashSales = props.dailyData.map((item) => Number.parseFloat(item.cash_sales) || 0)
 
   return {
     labels,

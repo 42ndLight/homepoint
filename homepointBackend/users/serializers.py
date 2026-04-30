@@ -49,7 +49,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        if value not in dict(User.ROLE_CHOICES).keys():
+        if value not in dict(User.ROLE_CHOICES):
             raise serializers.ValidationError("Invalid role.")
         return value
 

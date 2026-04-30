@@ -5,8 +5,9 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <!-- Start Date Filter -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+          <label for="start-date" class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
           <input
+            id="start-date"
             v-model="filters.startDate"
             type="date"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -15,8 +16,9 @@
 
         <!-- End Date Filter -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
+          <label for="end-date" class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
           <input
+            id="end-date"
             v-model="filters.endDate"
             type="date"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -25,8 +27,9 @@
 
         <!-- Transaction Type Filter -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Transaction Type</label>
+          <label for="trans-type" class="block text-sm font-semibold text-gray-700 mb-2">Transaction Type</label>
           <select
+            id="trans-type"
             v-model="filters.type"
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
@@ -42,8 +45,9 @@
 
         <!-- Search Box -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Reference / Notes</label>
+          <label for="search-logs" class="block text-sm font-semibold text-gray-700 mb-2">Reference / Notes</label>
           <input
+            id="search-logs"
             v-model="searchQuery"
             type="text"
             placeholder="Search transactions..."
@@ -364,7 +368,7 @@ const resetFilters = () => {
 }
 
 const formatCurrency = (value) => {
-  const numValue = parseFloat(value) || 0
+  const numValue = Number.parseFloat(value) || 0
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: 'KES',

@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import InputText from 'primevue/inputtext'
 import Panel from 'primevue/panel'
 import { useProductSearch } from '@/composables/useProductSearch'

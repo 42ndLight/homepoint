@@ -1,14 +1,16 @@
 <template>
   <div class="mb-4">
-    <label class="block text-sm font-medium mb-2">Filter by Category
+    <label for="category-select" class="block text-sm font-medium mb-2">Filter by Category</label>
     <Select
+      id="category-select"
+      inputId="category-select"
       v-model="selectedCategory"
       :options="categoryOptions"
       optionLabel="label"
       optionValue="value"
       placeholder="All Categories"
       class="w-full md:w-14rem"
-    /></label>
+    />
   </div>
 </template>
 

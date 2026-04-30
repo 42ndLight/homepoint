@@ -20,8 +20,9 @@
             <div class="mb-6">
               <div class="flex flex-col md:flex-row gap-4 mb-4">
                 <div class="flex-1">
-                  <label class="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
+                  <label for="product-select" class="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
                   <select
+                    id="product-select"
                     v-model="selectedProductId"
                     @change="loadInventory"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -33,8 +34,9 @@
                   </select>
                 </div>
                 <div class="flex-1">
-                  <label class="block text-sm font-semibold text-gray-700 mb-2">Search Variants</label>
+                  <label for="variant-search" class="block text-sm font-semibold text-gray-700 mb-2">Search Variants</label>
                   <input
+                    id="variant-search"
                     v-model="searchQuery"
                     type="text"
                     placeholder="Search by SKU or variant..."
@@ -217,8 +219,11 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Amount to {{ movementType === 'IN' ? 'Add' : 'Remove' }}</label>
+            <label for="move-amount" class="block text-sm font-semibold text-gray-700 mb-2">
+              Amount to {{ movementType === 'IN' ? 'Add' : 'Remove' }}
+            </label>
             <input
+              id="move-amount"
               v-model.number="newQuantity"
               type="number"
               min="0"
@@ -228,8 +233,9 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
+            <label for="update-notes" class="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
             <textarea
+              id="update-notes"
               v-model="updateNotes"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Stock received, physical count, etc."
@@ -271,7 +277,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -336,7 +342,7 @@ const loadInventory = async () => {
   error.value = null
 
   try {
-    const productData = products.value.find(p => p.id === parseInt(selectedProductId.value))
+    const productData = products.value.find(p => p.id === Number.parseInt(selectedProductId.value))
     if (!productData) {
       error.value = 'Product not found'
       inventory.value = []

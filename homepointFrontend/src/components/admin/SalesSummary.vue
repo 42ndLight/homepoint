@@ -73,7 +73,7 @@ defineProps({
 })
 
 const formatCurrency = (value) => {
-  const numValue = parseFloat(value) || 0
+  const numValue = Number.parseFloat(value) || 0
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: 'KES',

@@ -31,7 +31,7 @@ const formatChartData = () => {
 
   const labels = props.topProducts.map((product) => product.product_name)
   const quantities = props.topProducts.map((product) => product.quantity || 0)
-  const revenues = props.topProducts.map((product) => parseFloat(product.revenue) || 0)
+  const revenues = props.topProducts.map((product) => Number.parseFloat(product.revenue) || 0)
 
   return {
     labels,
@@ -95,7 +95,7 @@ const initChart = () => {
                 if (label) {
                   label += ': '
                 }
-                const value = context.parsed[context.dataset.yAxisID === 'y' ? 'y' : 'y']
+                const value = context.parsed[context.dataset.yAxisID || 'y']
 
                 if (context.dataset.yAxisID === 'y1') {
                   label += new Intl.NumberFormat('en-KE', {

@@ -146,7 +146,7 @@ const receiptData = computed(() => formatReceiptData(props.order))
 const qrCodeData = ref(null)
 const formatWithDashes = (str) => {
   if (!str) return '';
-  return str.replace(/-/g, '').match(/.{1,4}/g).join('-');
+  return str.replaceAll(/-/g, '').match(/.{1,4}/g).join('-');
 }
 const generateKRAQRCodeString = (data) => {
   return `${data.date.replaceAll('-','')}` + 

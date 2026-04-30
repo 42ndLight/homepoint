@@ -5,6 +5,7 @@ import logging
 from django.db import transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_GET
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 from django.utils import timezone
 from datetime import timedelta
 
-@api_view(['POST'])
+@require_POST
 @permission_classes([IsAuthenticated])
 def initiate_stk_push(request):
     """
@@ -104,7 +105,7 @@ def initiate_stk_push(request):
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
+@require_GET
 @permission_classes([IsAuthenticated])
 def check_order_payment_status(request, order_id):
     """
@@ -133,7 +134,7 @@ def check_order_payment_status(request, order_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
-@api_view(['POST'])
+@require_POST
 @permission_classes([AllowAny])
 def stk_callback(request):
     """
@@ -174,7 +175,7 @@ def stk_callback(request):
         return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
 
 @csrf_exempt
-@api_view(['POST'])
+@require_POST
 @permission_classes([AllowAny])
 def mpesa_confirmation_url(request):
     """
@@ -228,7 +229,7 @@ def mpesa_confirmation_url(request):
         return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted with internal error"})
 
 @csrf_exempt
-@api_view(['POST'])
+@require_POST
 @permission_classes([AllowAny])
 def mpesa_validation(request):
     return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})

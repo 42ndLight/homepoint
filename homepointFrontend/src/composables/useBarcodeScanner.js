@@ -62,7 +62,7 @@ export function useBarcodeScanner(options = {}) {
       ...configOverrides,
       inputStream: {
         ...defaultConfig.inputStream,
-        ...(configOverrides?.inputStream || {}),
+        ...(configOverrides?.inputStream ),
         target: configOverrides?.inputStream?.target ?? target ?? defaultConfig.inputStream.target,
       },
     }

@@ -146,4 +146,3 @@ const userMenuItems = computed(() => {
   </div>
 </template>
 
-<style scoped></style>

@@ -28,10 +28,11 @@
 
         <!-- Amount -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Amount (KES)</label>
+          <label for="amount" class="block text-sm font-semibold text-gray-700 mb-2">Amount (KES)</label>
           <div class="relative">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">KES</span>
             <input
+              id="amount"
               v-model.number="formData.amount"
               type="number"
               step="0.01"
@@ -46,8 +47,9 @@
         <!-- Expense Specific Fields -->
         <div v-if="formData.transaction_type === 'EXPENSE'" class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+            <label for="category" class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
             <select
+              id="category"
               v-model="formData.category"
               required
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -60,8 +62,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">Supplier (Optional)</label>
+            <label for="supplier" class="block text-sm font-semibold text-gray-700 mb-2">Supplier (Optional)</label>
             <input
+              id="supplier"
               v-model="formData.supplier"
               type="text"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -72,8 +75,9 @@
 
         <!-- Reference ID (Optional) -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Reference ID (Optional)</label>
+          <label for="reference_id" class="block text-sm font-semibold text-gray-700 mb-2">Reference ID (Optional)</label>
           <input
+            id="reference_id"
             v-model="formData.reference_id"
             type="text"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -83,8 +87,9 @@
 
         <!-- Notes -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
+          <label for="notes" class="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
           <textarea
+            id="notes"
             v-model="formData.notes"
             rows="3"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
