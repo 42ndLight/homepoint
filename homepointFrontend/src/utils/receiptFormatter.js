@@ -19,9 +19,9 @@ export function formatReceiptData(order) {
       hour12: false,
     }),
     items: order.items || [],
-    subtotal: parseFloat(order.total_amount) / 1.16, // Remove VAT to get subtotal
-    vat: (parseFloat(order.total_amount) / 1.16) * 0.16,
-    total: parseFloat(order.total_amount),
+    subtotal: Number.parseFloat(order.total_amount) / 1.16, // Remove VAT to get subtotal
+    vat: (Number.parseFloat(order.total_amount) / 1.16) * 0.16,
+    total: Number.parseFloat(order.total_amount),
     phoneNumber: order.phone_number,
     deliveryLocation: order.delivery_location,
   }
@@ -75,11 +75,11 @@ export function formatCurrency(amount) {
  */
 export function formatQuantity(quantity, unitType = 'piece') {
   if (!unitType || unitType === 'piece') {
-    return `${parseInt(quantity)}`
+    return `${Number.parseInt(quantity)}`
   }
 
   // For decimal units (meter, kg, sqm)
-  return quantity % 1 === 0 ? `${parseInt(quantity)}` : quantity.toFixed(2)
+  return quantity % 1 === 0 ? `${Number.parseInt(quantity)}` : quantity.toFixed(2)
 }
 
 /**
