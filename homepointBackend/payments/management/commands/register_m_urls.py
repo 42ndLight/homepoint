@@ -2,7 +2,7 @@
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from payments.utils import get_mpesa_access_token  # your token function
+from payments.mpesa.utils import get_mpesa_access_token  # your token function
 import requests
 
 class Command(BaseCommand):

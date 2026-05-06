@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.conf import settings
 import requests
 from rest_framework.test import APIClient
-from .utils import get_mpesa_access_token
+from payments.mpesa.utils import get_mpesa_access_token
 
 class PaymentTest(TestCase):
     def setUp(self):

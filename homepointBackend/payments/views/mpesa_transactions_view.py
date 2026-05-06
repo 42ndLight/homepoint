@@ -23,6 +23,8 @@ from django.utils import timezone
 from datetime import timedelta
 
 @require_POST
+@csrf_exempt
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def initiate_stk_push(request):
     """
@@ -106,6 +108,7 @@ def initiate_stk_push(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @require_GET
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def check_order_payment_status(request, order_id):
     """
@@ -135,6 +138,7 @@ def check_order_payment_status(request, order_id):
 
 @csrf_exempt
 @require_POST
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def stk_callback(request):
     """
@@ -176,6 +180,7 @@ def stk_callback(request):
 
 @csrf_exempt
 @require_POST
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def mpesa_confirmation_url(request):
     """
@@ -230,6 +235,7 @@ def mpesa_confirmation_url(request):
 
 @csrf_exempt
 @require_POST
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def mpesa_validation(request):
     return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})

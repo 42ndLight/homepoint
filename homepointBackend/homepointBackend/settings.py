@@ -103,7 +103,7 @@ WSGI_APPLICATION = 'homepointBackend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE':'django.db.backends.{}'.format(
-             os.getenv('DB_ENGINE', 'postgres')
+             os.getenv('DB_ENGINE', 'postgresql')
          ),
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),

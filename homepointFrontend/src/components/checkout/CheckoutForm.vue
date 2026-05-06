@@ -221,7 +221,7 @@ const validatePhone = (phone) => {
 }
 
 const formatPhoneForAPI = (phone) => {
-  const cleaned = phone.replace(/\s/g, '').replaceAll(/^\+/, '')
+  const cleaned = phone.replace(/\s/g, '').replaceAll(/^\+/g, '')
   if (cleaned.startsWith('0')) {
     return '254' + cleaned.slice(1)
   }
