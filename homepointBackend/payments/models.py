@@ -28,6 +28,12 @@ class Transaction(models.Model):
         ('PURCHASE', 'Purchase Payment'),
     ]
     MOVEMENT_CHOICES = [('IN', 'Money In'), ('OUT', 'Money Out')]
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('CANCELLED', 'Cancelled'),
+    ]
 
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='ledger', default=None, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -35,6 +41,7 @@ class Transaction(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='SALES')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     balance_after = models.DecimalField(max_digits=10, decimal_places=2) # Crucial for audits
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SUCCESS')
     timestamp = models.DateTimeField(auto_now_add=True)
     reference_id = models.CharField(max_length=100, blank=True, db_index=True,
                                     help_text="M-Pesa Receipt, Cash Receipt No, etc.")
@@ -49,6 +56,7 @@ class Transaction(models.Model):
             models.Index(fields=['account', 'timestamp']),
             models.Index(fields=['transaction_type', 'timestamp']),
             models.Index(fields=['reference_id']),
+            models.Index(fields=['status']),
         ]
 
 
@@ -59,20 +67,12 @@ class Transaction(models.Model):
 
 
 class MpesaTransaction(Transaction):
-    STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('SUCCESS', 'Success'),
-        ('FAILED', 'Failed'),
-        ('CANCELLED', 'Cancelled'),
-    ]    
-    
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='mpesa_transactions')
     merchant_request_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     checkout_request_id = models.CharField(max_length=100, unique=True)
     bill_reference_no = models.CharField(max_length=100, unique=True)
     mpesa_receipt_number = models.CharField(max_length=100, blank=True)
     phone_number = models.CharField(max_length=15)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     callback_data = models.JSONField(blank=True, null=True)  # Store full callback response
 
     class Meta:

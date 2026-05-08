@@ -49,6 +49,10 @@ def _build_transaction(model_class, account, user, movement, tx_type, amount, ex
 
 @db_transaction.atomic
 def record_cash_sale(user, order, amount, receipt_number='', notes=''):
+    """Record a cash sale and update order status."""
+    if order.status == 'paid':
+        raise ValueError(f"Order #{order.id} is already marked as paid.")
+
     cash    = _get_account('CASH')
     revenue = _get_account('REVENUE')
 
@@ -67,6 +71,7 @@ def record_cash_sale(user, order, amount, receipt_number='', notes=''):
             'receipt_number': receipt_number,
             'recorded_by': user,
             'notes': notes,
+            'status': 'SUCCESS',
         }
     )
 
@@ -78,6 +83,9 @@ def record_cash_sale(user, order, amount, receipt_number='', notes=''):
 @db_transaction.atomic
 def record_mpesa_sale(user, order, amount, phone_number,
                       checkout_request_id, mpesa_receipt='', callback_data=None):
+    if order.status == 'paid':
+        raise ValueError(f"Order #{order.id} is already marked as paid.")
+
     mpesa   = _get_account('MPESA')
     revenue = _get_account('REVENUE')
 
@@ -109,6 +117,9 @@ def record_mpesa_sale(user, order, amount, phone_number,
 @db_transaction.atomic
 def record_mpesa_initiated(order, amount, phone_number, checkout_request_id, user):
     """Call this when STK push is sent — before callback arrives."""
+    if order.status == 'paid':
+        raise ValueError(f"Order #{order.id} is already marked as paid.")
+
     mpesa = _get_account('MPESA')
 
     # Don't touch balance yet — payment not confirmed
@@ -118,10 +129,10 @@ def record_mpesa_initiated(order, amount, phone_number, checkout_request_id, use
         movement_type='IN',
         transaction_type='SALE',
         amount=amount,
-        balance_after=mpesa.balance,  # snapshot, will be wrong until confirmed — acceptable
+        balance_after=mpesa.balance,
         order=order,
         checkout_request_id=checkout_request_id,
-        bill_reference_no=checkout_request_id, # Ensure uniqueness
+        bill_reference_no=checkout_request_id,
         phone_number=phone_number,
         status='PENDING',
     )

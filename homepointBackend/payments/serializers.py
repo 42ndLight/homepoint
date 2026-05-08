@@ -104,8 +104,11 @@ class CashRecordSerializer(serializers.ModelSerializer):
         amount = data.get('amount')
         t_type = data.get('transaction_type')
 
-        if t_type == 'SALE' and order and amount < order.total_amount:
-            raise serializers.ValidationError(f"Amount {amount} is less than Order total {order.total_amount}")
+        if t_type in ['SALE', 'SALES'] and order:
+            if order.status == 'paid':
+                raise serializers.ValidationError(f"Order #{order.id} is already paid.")
+            if amount < order.total_amount:
+                raise serializers.ValidationError(f"Amount {amount} is less than Order total {order.total_amount}")
 
         return data   
 
