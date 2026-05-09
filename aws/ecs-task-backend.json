@@ -11,7 +11,7 @@
   "containerDefinitions": [
     {
       "name": "backend",
-      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/homepoint-backend:latest",
+      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/light42/pos-backend:latest",
       "portMappings": [
         {
           "containerPort": 8000,
