@@ -1,0 +1,123 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:17-alpine
+    container_name: homepoint-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d 
+    env_file:
+     - .env
+    ports:
+      - "5433:${DB_PORT}"
+    networks:
+      - homepoint_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Django Backend API
+  backend:
+    build:
+      context: ./homepointBackend
+      dockerfile: Dockerfile
+    container_name: homepoint-backend
+    env_file:
+      - .env
+    
+    volumes:
+      - ./homepointBackend:/app
+      - static_volume:/app/staticfiles_collected
+    
+    ports:
+      - "8000:8000"
+    
+    networks:
+      - homepoint_network
+    
+    depends_on:
+      db:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    restart: unless-stopped
+    
+    command: >
+      sh -c "
+        python manage.py wait_for_db &&
+        python manage.py migrate &&
+        python manage.py collectstatic --noinput &&
+        gunicorn homepointBackend.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+      "
+
+  # Vue.js Frontend
+  frontend:
+    build:
+      context: ./homepointFrontend
+      dockerfile: Dockerfile
+    container_name: homepoint-frontend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      NODE_ENV: ${NODE_ENV:-production}
+    
+    volumes:
+      - ./homepointFrontend/src:/app/src
+      - ./homepointFrontend/public:/app/public
+    
+    ports:
+      - "5173:5173"
+    
+    networks:
+      - homepoint_network
+    
+    depends_on:
+      - backend
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    restart: unless-stopped
+
+  # Optional: Nginx Reverse Proxy (uncomment to use)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: homepoint-nginx
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   networks:
+  #     - homepoint_network
+  #   depends_on:
+  #     - frontend
+  #     - backend
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  static_volume:
+    driver: local
+
+networks:
+  homepoint_network:
+    driver: bridge
