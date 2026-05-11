@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 
 from dotenv import load_dotenv
 from decouple import config, Csv
@@ -99,9 +100,16 @@ WSGI_APPLICATION = 'homepointBackend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-DATABASES = {
-    'default': {
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+        default=f"postgres://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASSWORD')}@{os.environ.get('DATABASE_URL')}:5432/{os.environ.get('DB_NAME')}", conn_max_age=600)
+    }
+else:
+    # Fallback for local
+    DATABASES = { 'default': {
         'ENGINE':'django.db.backends.{}'.format(
              os.getenv('DB_ENGINE', 'postgresql')
          ),
@@ -110,8 +118,9 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD'), 
         'HOST': os.environ.get('DB_HOST'), # 'DB_HOST', localhost
         'PORT': os.environ.get('DB_PORT'),
-    }
+    } 
 }
+
 
 
 # Password validation
