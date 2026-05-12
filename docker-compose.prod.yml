@@ -26,10 +26,10 @@ services:
 
   # Django Backend API
   backend:
-    image: ${DOCKER_REGISTRY}/homepoint-backend:${VERSION:-latest}
+    image: ${DOCKER_REGISTRY}/light/pos-backend:${VERSION:-latest}
     container_name: homepoint-backend-prod
-    environment:
-      env_file: ".env.prod"
+    env_file:
+      - .env.prod
     
     volumes:
       - static_volume_prod:/app/staticfiles_collected
@@ -68,10 +68,10 @@ services:
 
   # Vue.js Frontend (pre-built)
   frontend:
-    image: ${DOCKER_REGISTRY}/homepoint-frontend:${VERSION:-latest}
+    image: ${DOCKER_REGISTRY}/light/pos-frontend:${VERSION:-latest}
     container_name: homepoint-frontend-prod
-    environment:
-      env_file: ".env.prod"
+    env_file:
+      - .env.prod
     
     # Don't expose port - only accessible through nginx
     networks:
