@@ -95,28 +95,29 @@ services:
     container_name: homepoint-nginx-prod
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro  # Mount SSL certificates
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
       - static_volume_prod:/app/staticfiles_collected:ro
       - media_volume_prod:/app/media:ro
-    
     ports:
       - "80:80"
       - "443:443"
-    
     networks:
       - homepoint_network
-    
     depends_on:
       - frontend
       - backend
-    
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    
     restart: always
+
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    container_name: homepoint-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   postgres_data_prod:
