@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM nginx:alpine
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -25,26 +25,24 @@ ENV NODE_ENV=production
 # Set work directory
 WORKDIR /app
 
-# Install serve to run production build
-RUN npm install -g serve
+# Production Stage
+FROM nginx:alpine
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy built assets from builder stage to Nginx default html folder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 1. Create the group with GID 1001
-# 2. Create the user with UID 1001 and add to group 'appuser'
-RUN addgroup -S -g 1001 appuser && \
-    adduser -S -u 1001 -G appuser appuser
+# Copy a custom nginx config for Vue (to handle SPA routing)
+# This prevents 404 errors when you refresh the page on a sub-route
+RUN echo 'server { \
+    listen 80; \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html; \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
-# 3. Switch to the new user
-USER appuser
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
 
-# Expose port
-EXPOSE 5173
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5173/ || exit 1
-
-# Start the application
-CMD ["serve", "-s", "dist", "-l", "5173"]
