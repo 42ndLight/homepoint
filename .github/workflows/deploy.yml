@@ -2,7 +2,7 @@ name: Deploy to AWS ECR
 
 on:
   push:
-    branches: [ main ]
+    branches: [ prod-cloud ]
   workflow_dispatch:
 
 jobs:
