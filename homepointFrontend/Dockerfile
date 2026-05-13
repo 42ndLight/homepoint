@@ -14,6 +14,7 @@ RUN npm ci
 COPY . .
 
 # Build the application
+VITE_API_BASE_URL=https://test.betasys.co.ke/api
 RUN npm run build
 
 # Production stage
