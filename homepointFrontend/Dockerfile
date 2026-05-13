@@ -1,6 +1,12 @@
 # Frontend Dockerfile - Multi-stage build
 FROM node:20-alpine AS builder
 
+# Declare the argument
+ARG VITE_API_BASE_URL
+
+# Make it available as an environment variable for the build process
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Set work directory
 WORKDIR /app
 
@@ -14,7 +20,6 @@ RUN npm ci
 COPY . .
 
 # Build the application
-VITE_API_BASE_URL=https://test.betasys.co.ke/api
 RUN npm run build
 
 # Production stage
