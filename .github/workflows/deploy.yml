@@ -1,13 +1,26 @@
-name: Deploy to AWS ECR
+name: Deploy to AWS
 
 on:
   push:
     branches: [ prod-cloud ]
   workflow_dispatch:
 
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_BACKEND_REPO: light42/pos-backend
+  ECR_FRONTEND_REPO: light42/pos-frontend
+  S3_BUCKET: s3-pos-public-host
+  # Default API URL if secret is not set
+  VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://test.betasys.co.ke/api' }}
+  VITE_STORE_NAME: HOMEPOINT HARDWARE STORE
+  VITE_STORE_TIN: 118184471
+  VITE_STORE_ADDRESS: Nairobi, Kenya
+  VITE_STORE_PHONE: +254 700 000000
+
+
 jobs:
   deploy:
-    name: Build and Push to ECR
+    name: Build and Push
     runs-on: ubuntu-latest
     
     steps:
@@ -18,22 +31,27 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
+        cache: 'npm'
+        cache-dependency-path: './homepointFrontend/package-lock.json'
 
-    - name: Install & Build
+    - name: Install & Build Frontend
       run: |
         npm ci
         npm run build
+      working-directory: ./homepointFrontend
+      env:
+        VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: ${{ env.AWS_REGION }}
 
     - name: Deploy to S3
       run: |
-        aws s3 sync ./dist s3://s3-pos-public-host --delete
+        aws s3 sync ./homepointFrontend/dist s3://${{ env.S3_BUCKET }} --delete
 
     - name: Invalidate CloudFront Cache
       run: |
@@ -45,28 +63,25 @@ jobs:
 
     - name: Ensure ECR Repositories Exist
       run: |
-        aws ecr describe-repositories --repository-names light42/pos-backend || aws ecr create-repository --repository-name light42/pos-backend
-        aws ecr describe-repositories --repository-names light42/pos-frontend || aws ecr create-repository --repository-name light42/pos-frontend
+        for repo in ${{ env.ECR_BACKEND_REPO }} ${{ env.ECR_FRONTEND_REPO }}; do
+          aws ecr describe-repositories --repository-names $repo || aws ecr create-repository --repository-name $repo
+        done
 
     - name: Build, Tag, and Push Backend Image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: light42/pos-backend
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./homepointBackend
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker build -t $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:$IMAGE_TAG \
+                     -t $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }}:latest ./homepointBackend
+        docker push $ECR_REGISTRY/${{ env.ECR_BACKEND_REPO }} --all-tags
 
     - name: Build, Tag, and Push Frontend Image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: light42/pos-frontend
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build --build-arg VITE_API_BASE_URL=https://test.betasys.co.ke/api \
-         -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-         -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-         ./homepointFrontend
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker build --build-arg VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }} \
+                     -t $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:$IMAGE_TAG \
+                     -t $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }}:latest ./homepointFrontend
+        docker push $ECR_REGISTRY/${{ env.ECR_FRONTEND_REPO }} --all-tags

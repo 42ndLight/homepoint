@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'silk',
     'drf_yasg',
-    ]
+    'storages',
+]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -199,8 +200,60 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
+USE_AWS = config('USE_AWS', default=False, cast=bool)
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+if USE_AWS:
+    # AWS Authentication Keys
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
+    
+    # Optional: If using CloudFront to speed up asset delivery, add its URL here
+    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None)
+    
+    # S3 Performance Optimizations
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400', # Tell browsers to cache static files for 1 day
+    }
+    AWS_DEFAULT_ACL = None # Rely on S3 bucket policies instead of ACLs
+
+    # Static files settings
+    STATIC_LOCATION = 'static'
+    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/{STATIC_LOCATION}/'
+    
+    # Media files settings
+    MEDIA_LOCATION = 'media'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/{MEDIA_LOCATION}/'
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": MEDIA_LOCATION,
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": STATIC_LOCATION,
+            },
+        },
+    }
+        
+else:
+    # Fallback for local development
+    STATIC_URL = 'static/'
+    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
+    
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
