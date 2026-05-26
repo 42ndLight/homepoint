@@ -58,9 +58,27 @@
           <small v-if="errors.deliveryLocation" class="p-error">{{ errors.deliveryLocation }}</small>
         </div>
 
+        <!-- Conditional Email Field for Paystack -->
+        <div v-if="form.paymentMethod === 'paystack'" class="field animate-fadein">
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+            Email Address <span class="text-red-500">*</span>
+          </label>
+          <InputText
+            id="email"
+            v-model="form.email"
+            type="email"
+            placeholder="customer@example.com"
+            class="w-full"
+            :class="{ 'p-invalid': errors.email }"
+            :disabled="orderStore.loading"
+          />
+          <small v-if="errors.email" class="p-error">{{ errors.email }}</small>
+          <small class="text-gray-500 block mt-1">Required for card payment receipts</small>
+        </div>
+
         <div class="field">
           <span class="block text-sm font-medium text-gray-700 mb-2">Payment Method <span class="text-red-500">*</span></span>
-          <div class="flex gap-3">
+          <div class="flex flex-col gap-2">
             <div
               v-for="method in paymentMethods"
               :key="method.value"
@@ -79,7 +97,7 @@
                   v-model="form.paymentMethod"
                   :disabled="orderStore.loading"
                 />
-                <label :for="method.value" class="cursor-pointer">
+                <label :for="method.value" class="cursor-pointer flex-1">
                   <div class="font-medium text-gray-900">{{ method.label }}</div>
                   <div class="text-xs text-gray-500">{{ method.description }}</div>
                 </label>
@@ -127,6 +145,13 @@
           </p>
         </div>
 
+        <div v-else-if="form.paymentMethod === 'paystack'" class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+          <p class="text-indigo-800 font-medium">Card Payment</p>
+          <p class="text-sm text-indigo-700 mt-1">
+            Payment initialized. You should have been redirected to the secure gateway.
+          </p>
+        </div>
+
         <div v-else class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
           <p class="text-blue-800 font-medium">Cash on Delivery</p>
           <p class="text-sm text-blue-700 mt-1">
@@ -138,6 +163,10 @@
           <div class="flex justify-between">
             <span>Phone:</span>
             <span class="font-medium">{{ form.phone }}</span>
+          </div>
+          <div v-if="form.email" class="flex justify-between">
+            <span>Email:</span>
+            <span class="font-medium">{{ form.email }}</span>
           </div>
           <div class="flex justify-between">
             <span>Delivery to:</span>
@@ -189,12 +218,14 @@ const visible = computed({
 
 const form = ref({
   phone: '',
+  email: '',
   deliveryLocation: '',
   paymentMethod: 'mpesa',
 })
 
 const errors = ref({
   phone: '',
+  email: '',
   deliveryLocation: '',
 })
 
@@ -206,6 +237,11 @@ const paymentMethods = [
     value: 'mpesa',
     label: 'M-Pesa',
     description: 'Pay via STK Push',
+  },
+  {
+    value: 'paystack',
+    label: 'Card',
+    description: 'Pay via Card/Bank',
   },
   {
     value: 'cash',
@@ -220,6 +256,14 @@ const validatePhone = (phone) => {
   return kenyanPattern.test(cleaned)
 }
 
+const validateEmail = (email) => {
+  if (!email) return false
+
+  if (email.length > 254) return false;
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 const formatPhoneForAPI = (phone) => {
   const cleaned = phone.replace(/\s/g, '').replaceAll(/^\+/g, '')
   if (cleaned.startsWith('0')) {
@@ -232,18 +276,26 @@ const formatPhoneForAPI = (phone) => {
 }
 
 const isFormValid = computed(() => {
-  return (
+  const baseValid = 
     form.value.phone.trim() &&
     validatePhone(form.value.phone) &&
     form.value.deliveryLocation.trim() &&
     form.value.paymentMethod &&
     cartStore.items.length > 0
-  )
+
+  if (form.value.paymentMethod === 'paystack') {
+    return baseValid && validateEmail(form.value.email)
+  }
+  
+  return baseValid
 })
 
 const submitLabel = computed(() => {
   if (form.value.paymentMethod === 'mpesa') {
     return 'Pay with M-Pesa'
+  }
+  if (form.value.paymentMethod === 'paystack') {
+    return 'Pay with Card'
   }
   return 'Place Order'
 })
@@ -254,7 +306,7 @@ const formatPrice = (price) => {
 }
 
 const validateForm = () => {
-  errors.value = { phone: '', deliveryLocation: '' }
+  errors.value = { phone: '', email: '', deliveryLocation: '' }
   let valid = true
 
   if (!form.value.phone.trim()) {
@@ -270,6 +322,16 @@ const validateForm = () => {
     valid = false
   }
 
+  if (form.value.paymentMethod === 'paystack') {
+    if (!form.value.email.trim()) {
+      errors.value.email = 'Email address is required for card payments'
+      valid = false
+    } else if (!validateEmail(form.value.email)) {
+      errors.value.email = 'Enter a valid email address'
+      valid = false
+    }
+  }
+
   return valid
 }
 
@@ -279,7 +341,6 @@ const handleSubmit = async () => {
   orderStore.clearError()
 
   const formattedPhone = formatPhoneForAPI(form.value.phone)
-
   const totalBeforeOrder = cartStore.total
 
   const result = await orderStore.createOrder(
@@ -290,6 +351,17 @@ const handleSubmit = async () => {
   )
 
   if (result.success) {
+    if (form.value.paymentMethod === 'paystack') {
+        const paystackRes = await orderStore.initializePaystack(
+            result.order.id,
+            form.value.email.trim()
+        )
+        if (paystackRes.success && paystackRes.authorization_url) {
+            globalThis.location.href = paystackRes.authorization_url
+            return
+        }
+    }
+
     orderTotal.value = totalBeforeOrder
     orderComplete.value = true
     emit('order-complete', result.order)
@@ -312,10 +384,11 @@ const resetForm = () => {
   orderComplete.value = false
   form.value = {
     phone: '',
+    email: '',
     deliveryLocation: '',
     paymentMethod: 'mpesa',
   }
-  errors.value = { phone: '', deliveryLocation: '' }
+  errors.value = { phone: '', email: '', deliveryLocation: '' }
   orderStore.clearCurrentOrder()
 }
 

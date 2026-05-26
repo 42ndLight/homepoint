@@ -121,9 +121,9 @@ const userMenuItems = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 no-print-background">
     <!-- Navigation Bar -->
-    <Menubar v-if="authStore.isAuthenticated && route.name !== 'login'" :model="menuItems" class="mb-4">
+    <Menubar v-if="authStore.isAuthenticated && route.name !== 'login'" :model="menuItems" class="mb-4 no-print">
       <template #end>
         <div v-if="authStore.isAuthenticated" class="flex items-center gap-2 mr-3 text-sm" title="Sync status">
           <span class="flex items-center gap-1.5 px-2 py-1 rounded-full" :class="isOnline ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'">

@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8 px-4">
+  <div class="min-h-screen bg-gray-50 py-8 px-4 no-print-background">
     <div class="max-w-4xl mx-auto">
       <!-- Header -->
-      <div class="mb-6 flex items-center justify-between">
+      <div class="mb-6 flex items-center justify-between no-print">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">Receipt</h1>
           <p class="text-gray-600 mt-1" v-if="orderId">Order #{{ orderId }}</p>
@@ -24,12 +24,12 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center py-12">
+      <div v-if="loading" class="flex justify-center py-12 no-print">
         <ProgressSpinner />
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 no-print">
         <p class="text-red-700">{{ error }}</p>
         <PButton
           label="Try Again"
@@ -39,13 +39,13 @@
       </div>
 
       <!-- Receipt Display -->
-      <div v-else-if="order" class="bg-white rounded-lg shadow">
-        <div class="p-8">
+      <div v-else-if="order" class="bg-white rounded-lg shadow no-print-background">
+        <div class="p-8 no-print-padding">
           <ETIMSReceipt :order="order" :paymentMethod="paymentMethod" />
         </div>
 
         <!-- Actions -->
-        <div class="border-t border-gray-200 p-6 flex gap-3 justify-center">
+        <div class="border-t border-gray-200 p-6 flex gap-3 justify-center no-print">
           <PButton
             icon="pi pi-download"
             label="Download PDF"
@@ -69,7 +69,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else class="text-center py-12">
+      <div v-else class="text-center py-12 no-print">
         <i class="pi pi-inbox text-4xl text-gray-400 mb-3"></i>
         <p class="text-gray-600">No order found</p>
       </div>

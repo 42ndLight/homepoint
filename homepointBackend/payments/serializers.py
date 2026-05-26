@@ -3,9 +3,24 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from .models import (
     Transaction, MpesaTransaction, CashTransaction, Account,
-    SaleTransaction, ExpenseTransaction, DepositWithdrawal
+    SaleTransaction, ExpenseTransaction, DepositWithdrawal,
+    PaystackTransaction
 )
-from orders.models import Order  # assuming you have this
+from orders.models import Order
+
+class PaystackInitializeSerializer(serializers.Serializer):
+    order_id = serializers.PrimaryKeyRelatedField(
+        queryset=Order.objects.filter(status='pending'),
+        source='order'
+    )
+    email = serializers.EmailField(required=True)
+    callback_url = serializers.URLField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        order = data['order']
+        if order.total_amount <= 0:
+            raise serializers.ValidationError("Order has no amount to pay.")
+        return data
 
 
 class TransactionHistorySerializer(serializers.ModelSerializer):
