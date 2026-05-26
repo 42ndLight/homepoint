@@ -128,9 +128,7 @@ const cartStore  = useCartStore()
 const orderStore = useOrderStore()
 const toast      = useToast()
 
-const pendingCount = computed(() =>
-  orderStore.orderHistory.filter((o) => (o.status || '').toLowerCase() === 'pending').length
-)
+const pendingCount = computed(() => orderStore.pendingOrders.length)
 
 const loadSellableItems = async () => {
   loading.value = true
@@ -190,5 +188,6 @@ const handleOrderComplete = (order) => {
 onMounted(() => {
   loadSellableItems()
   orderStore.fetchOrderHistory()
+  orderStore.fetchPendingOrders()
 })
 </script>

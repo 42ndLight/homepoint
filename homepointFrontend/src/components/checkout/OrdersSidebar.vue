@@ -287,9 +287,7 @@ const cashOrder = ref(null)
 const mpesaForm = ref({ receiptNumber: '', phone: '' })
 const cashForm = ref({ amount: null })
 
-const pendingOrders = computed(() =>
-  orderStore.orderHistory.filter((o) => (o.status || '').toLowerCase() === 'pending')
-)
+const pendingOrders = computed(() => orderStore.pendingOrders)
 const completedOrders = computed(() =>
   orderStore.orderHistory.filter((o) => {
     const s = (o.status || '').toLowerCase()

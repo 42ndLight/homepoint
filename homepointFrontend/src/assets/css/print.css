@@ -34,6 +34,21 @@
     display: none !important;
   }
 
+  .no-print-background {
+    background: none !important;
+    background-color: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .no-print-padding {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   /* Receipt container */
   .receipt-page {
     width: 80mm !important;

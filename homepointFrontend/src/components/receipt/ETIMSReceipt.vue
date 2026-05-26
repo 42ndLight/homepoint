@@ -197,6 +197,7 @@ const exposedFormatQuantity = formatQuantity
   .receipt-page {
     box-shadow: none;
     page-break-after: always;
+    min-height: auto;
   }
 }
 </style>

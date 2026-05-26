@@ -148,6 +148,11 @@ export const useOrderStore = defineStore('order', () => {
 
   const fetchPendingOrders = async () => {
     const result = await fetchOrderHistory()
+    if (result.success) {
+      pendingOrders.value = orderHistory.value.filter(
+        (o) => (o.status || '').toLowerCase() === 'pending'
+      )
+    }
     return { ...result, orders: pendingOrders.value }
   }
 

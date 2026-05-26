@@ -19,6 +19,12 @@ const router = createRouter({
       meta: { title: 'Register Staff' },
     },
     {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('@/views/PrivacyView.vue'),
+      meta: { title: 'Privacy Policy' },
+    },
+    {
       path: '/pos',
       name: 'pos',
       component: () => import('@/views/pos/POSView.vue'),
