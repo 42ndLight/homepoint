@@ -126,29 +126,29 @@ def verify_transaction(self, reference: str) -> Dict:
             return {"status": False, "message": data.get("message")}
             
     except requests.RequestException as e:
-        logger.error(f"Paystack verify error: {str(e)}")
+        logger.exception(f"Paystack verify error: {str(e)}")
         return {"status": False, "message": str(e)}
 
     
-    def validate_webhook(self, signature: str, payload: bytes) -> bool:
-        """
-        Validate webhook signature from Paystack.
+def validate_webhook(self, signature: str, payload: bytes) -> bool:
+    """
+    Validate webhook signature from Paystack.
+    
+    Args:
+        signature: X-Paystack-Signature header value
+        payload: Raw request body (bytes)
         
-        Args:
-            signature: X-Paystack-Signature header value
-            payload: Raw request body (bytes)
-            
-        Returns:
-            True if signature is valid
-        """
-        if not signature:
-            return False
-            
-        hash_object = hmac.new(
-            self.secret_key.encode('utf-8'),
-            payload,
-            hashlib.sha512
-        )
-        expected_signature = hash_object.hexdigest()
+    Returns:
+        True if signature is valid
+    """
+    if not signature:
+        return False
         
-        return hmac.compare_digest(expected_signature, signature)
+    hash_object = hmac.new(
+        self.secret_key.encode('utf-8'),
+        payload,
+        hashlib.sha512
+    )
+    expected_signature = hash_object.hexdigest()
+    
+    return hmac.compare_digest(expected_signature, signature)
