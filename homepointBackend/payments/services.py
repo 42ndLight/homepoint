@@ -6,8 +6,49 @@ from .models import (
     Account, Transaction,
     SaleTransaction, MpesaTransaction,
     CashTransaction, ExpenseTransaction,
-    DepositWithdrawal,
+    DepositWithdrawal, PaystackTransaction
 )
+
+
+@db_transaction.atomic
+def confirm_paystack_payment(reference, paystack_data):
+    """
+    Call this from the Paystack webhook or verify view.
+    Updates transaction, order, and ledger accounts.
+    """
+    tx = PaystackTransaction.objects.select_for_update().get(
+        paystack_reference=reference
+    )
+
+    if tx.status != 'PENDING':
+        return tx # Already processed
+
+    # For Paystack, we might want to use a 'BANK' or 'PAYSTACK' account
+    # Assuming 'BANK' for now, or you can create a 'PAYSTACK' account type
+    try:
+        bank = _get_account('BANK')
+    except Account.DoesNotExist:
+        # Fallback to creating/getting a general bank account if not exists
+        bank, _ = Account.objects.get_or_create(
+            account_type='BANK', 
+            defaults={'name': 'Main Bank Account'}
+        )
+        bank = Account.objects.select_for_update().get(id=bank.id)
+
+    revenue = _get_account('REVENUE')
+
+    _credit_account(bank, tx.amount)
+    _credit_account(revenue, tx.amount)
+
+    tx.status = 'SUCCESS'
+    tx.balance_after = bank.balance
+    tx.callback_data = paystack_data
+    tx.save(update_fields=['status', 'balance_after', 'callback_data'])
+
+    tx.order.status = 'paid'
+    tx.order.save(update_fields=['status'])
+
+    return tx
 
 def _debit_account(account, amount):
     """Take money OUT of an account. Raises if insufficient funds."""

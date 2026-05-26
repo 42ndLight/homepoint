@@ -82,6 +82,20 @@ class MpesaTransaction(Transaction):
     def __str__(self):
         return f"M-Pesa {self.status} – Order #{self.order_id} – {self.phone_number}"
 
+class PaystackTransaction(Transaction):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='paystack_transactions')
+    access_code = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    paystack_reference = models.CharField(max_length=100, unique=True)
+    customer_email = models.EmailField()
+    callback_data = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['paystack_reference'])]
+        verbose_name = "Paystack Transaction"
+
+    def __str__(self):
+        return f"Paystack {self.status} – Order #{self.order_id} – {self.customer_email}"
+
 class CashTransaction(Transaction):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='cash_transactions', null=True, blank=True)    
     

@@ -81,12 +81,28 @@
                           @click="checkMpesaStatus(order.id)  "
                         />
                         <Button
+                          label="Check Card"
+                          icon="pi pi-sync"
+                          severity="info"
+                          size="small"
+                          outlined
+                          :loading="verifyingCardId === order.id"
+                          @click="checkCardStatus(order)"
+                        />
+                        <Button
                           label="STK Push"
                           icon="pi pi-mobile"
                           severity="warn"
                           size="small"
                           :loading="initiatingStkId === order.id"
                           @click="initiateStk(order)"
+                        />
+                        <Button
+                          label="Pay with Card"
+                          icon="pi pi-credit-card"
+                          severity="help"
+                          size="small"
+                          @click="openPaystackDialog(order)"
                         />
                         <Button
                           label="Complete M-Pesa"
@@ -218,6 +234,37 @@
       </template>
     </Dialog>
 
+    <!-- Paystack initialization dialog -->
+    <Dialog
+      v-model:visible="paystackDialogVisible"
+      header="Pay with Card (Paystack)"
+      :modal="true"
+      :style="{ width: '360px' }"
+      :closable="!orderStore.loading"
+    >
+      <div class="space-y-4">
+        <div class="bg-indigo-50 p-3 rounded-lg text-sm text-indigo-800">
+          <p class="font-semibold">Order #{{ paystackOrder?.id }}</p>
+          <p>Total: KES {{ formatPrice(paystackOrder?.total_amount) }}</p>
+        </div>
+        <div class="field">
+          <label for="paystack-email" class="block text-sm font-medium mb-1">Email Address <span class="text-red-500">*</span></label>
+          <InputText 
+            id="paystack-email" 
+            v-model="paystackForm.email" 
+            placeholder="customer@example.com" 
+            class="w-full" 
+            :class="{ 'p-invalid': !isPaystackEmailValid && paystackForm.submitted }"
+          />
+          <small v-if="!isPaystackEmailValid && paystackForm.submitted" class="p-error">Valid email is required</small>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" outlined @click="paystackDialogVisible = false" :disabled="orderStore.loading" />
+        <Button label="Initialize Payment" icon="pi pi-external-link" :loading="orderStore.loading" @click="submitPaystackInit" />
+      </template>
+    </Dialog>
+
     <!-- Cash completion dialog -->
     <Dialog
       v-model:visible="cashDialogVisible"
@@ -278,14 +325,22 @@ const toast = useToast()
 
 const activeTab = ref(0)
 const checkingOrderId = ref(null)
+const verifyingCardId = ref(null)
 const initiatingStkId = ref(null)
 const mpesaDialogVisible = ref(false)
+const paystackDialogVisible = ref(false)
 const cashDialogVisible = ref(false)
 const mpesaOrder = ref(null)
+const paystackOrder = ref(null)
 const cashOrder = ref(null)
 
 const mpesaForm = ref({ receiptNumber: '', phone: '' })
+const paystackForm = ref({ email: '', submitted: false })
 const cashForm = ref({ amount: null })
+
+const isPaystackEmailValid = computed(() => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paystackForm.value.email)
+})
 
 const pendingOrders = computed(() => orderStore.pendingOrders)
 const completedOrders = computed(() =>
@@ -346,6 +401,21 @@ const checkMpesaStatus = async (orderId) => {
   }
 }
 
+const checkCardStatus = async (order) => {
+  verifyingCardId.value = order.id
+  try {
+    const res = await orderStore.verifyPaystack(order.id)
+    if (res.status && res.transaction_status === 'success') {
+      toast.add({ severity: 'success', summary: 'Payment Confirmed', detail: 'Card payment was successful!', life: 3000 })
+      await refreshOrders()
+    } else {
+      toast.add({ severity: 'info', summary: 'Card Status', detail: res.message || res.transaction_status || 'No card transaction found or not yet confirmed.', life: 3000 })
+    }
+  } finally {
+    verifyingCardId.value = null
+  }
+}
+
 const initiateStk = async (order) => {
   if (initiatingStkId.value === order.id) return // Prevent multiple clicks for same order
   
@@ -373,6 +443,36 @@ const initiateStk = async (order) => {
     }
   } finally {
     initiatingStkId.value = null
+  }
+}
+
+const openPaystackDialog = (order) => {
+  paystackOrder.value = order
+  paystackForm.value = { 
+    email: order.customer_email || '', 
+    submitted: false 
+  }
+  paystackDialogVisible.value = true
+}
+
+const submitPaystackInit = async () => {
+  paystackForm.value.submitted = true
+  if (!isPaystackEmailValid.value) return
+
+  const res = await orderStore.initializePaystack(
+    paystackOrder.value.id,
+    paystackForm.value.email.trim()
+  )
+
+  if (res.success && res.authorization_url) {
+    window.location.href = res.authorization_url
+  } else {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Payment Error', 
+      detail: res.error || 'Failed to initialize card payment', 
+      life: 3000 
+    })
   }
 }
 

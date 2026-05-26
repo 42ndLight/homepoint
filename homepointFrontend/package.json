@@ -53,5 +53,7 @@
     "vitepress": "^1.6.4",
     "vitest": "^4.0.16"
   },
-  "overrides": {}
+  "overrides": {
+    "esbuild": "0.25.0"
+  }
 }

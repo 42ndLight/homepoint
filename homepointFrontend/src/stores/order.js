@@ -277,6 +277,60 @@ export const useOrderStore = defineStore('order', () => {
     }
   }
 
+  const initializePaystack = async (orderId, email, callbackUrl = '') => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post('/payments/paystack/initialize/', {
+        order_id: orderId,
+        email,
+        callback_url: callbackUrl,
+      })
+
+      return {
+        success: true,
+        ...response
+      }
+    } catch (err) {
+      error.value = err.data?.error || err.message || 'Failed to initialize Paystack'
+      return {
+        success: false,
+        error: error.value,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const verifyPaystack = async (orderId) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get(`/payments/paystack/verify/${orderId}/`)
+      
+      if (response.transaction_status === 'success') {
+        // Find the transaction and update order if needed
+        // The verify endpoint on backend is just a proxy, real update is via webhook
+        // but we can trigger a fetchOrder to be sure
+      }
+
+      return {
+        success: true,
+        ...response
+      }
+    } catch (err) {
+      error.value = err.data?.error || err.message || 'Failed to verify Paystack'
+      return {
+        success: false,
+        error: error.value,
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const updateOrderInLists = (updatedOrder) => {
     // Update current order
     if (currentOrder.value?.id === updatedOrder.id) {
@@ -370,6 +424,8 @@ export const useOrderStore = defineStore('order', () => {
     checkMpesaPaymentStatus,
     deleteOrder,
     initiateStkPush,
+    initializePaystack,
+    verifyPaystack,
     clearCurrentOrder,
     clearError,
     

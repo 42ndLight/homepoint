@@ -116,6 +116,7 @@ import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
 import { useOrderStore } from '@/stores/order'
 import { useToast } from 'primevue/usetoast'
+import { useRoute } from 'vue-router'
 
 const showScanner       = ref(false)
 const showCheckout      = ref(false)
@@ -127,6 +128,7 @@ const syncing       = ref(false)
 const cartStore  = useCartStore()
 const orderStore = useOrderStore()
 const toast      = useToast()
+const route      = useRoute()
 
 const pendingCount = computed(() => orderStore.pendingOrders.length)
 
@@ -185,9 +187,25 @@ const handleOrderComplete = (order) => {
   showOrdersSidebar.value = true
 }
 
+const verifyPaystackPayment = async () => {
+  const reference = route.query.reference
+  if (reference && route.query.paystack_verify === 'true') {
+    toast.add({ severity: 'info', summary: 'Verifying Payment', detail: 'Please wait while we confirm your card payment...', life: 3000 })
+    const res = await orderStore.verifyPaystack(reference)
+    if (res.status && res.transaction_status === 'success') {
+       toast.add({ severity: 'success', summary: 'Payment Confirmed', detail: 'Your card payment was successful!', life: 5000 })
+       orderStore.fetchOrderHistory()
+       orderStore.fetchPendingOrders()
+    } else {
+       toast.add({ severity: 'error', summary: 'Payment Failed', detail: res.message || 'We could not verify your payment.', life: 5000 })
+    }
+  }
+}
+
 onMounted(() => {
   loadSellableItems()
   orderStore.fetchOrderHistory()
   orderStore.fetchPendingOrders()
+  verifyPaystackPayment()
 })
 </script>
