@@ -130,6 +130,10 @@
       </template>
 
       <template #footer>
+        <div class="mb-4 text-center text-xs text-gray-500">
+          By creating an account, you agree to our
+          <router-link to="/privacy" class="text-indigo-600 hover:text-indigo-500 underline">Privacy Policy</router-link>.
+        </div>
         <div class="flex flex-col md:flex-row justify-between items-center gap-3 mt-4">
           <Button
             label="Back to Login"

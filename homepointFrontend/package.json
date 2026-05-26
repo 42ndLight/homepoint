@@ -47,9 +47,13 @@
     "globals": "^17.0.0",
     "jsdom": "^27.4.0",
     "prettier": "3.7.4",
-    "vite": "^7.3.2",
+    "vite": "^8.0.14",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-vue-devtools": "^8.0.5",
+    "vitepress": "^1.6.4",
     "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "esbuild": "0.25.0"
   }
 }
