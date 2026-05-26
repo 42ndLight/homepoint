@@ -29,7 +29,7 @@ class PaystackWebhookView(APIView):
                 confirm_paystack_payment(reference, data)
                 logger.info(f"Paystack payment successful for reference: {reference}")
             except Exception as e:
-                logger.error(f"Error processing Paystack webhook: {str(e)}")
+                logger.exception(f"Error processing Paystack webhook: {str(e)}")
                 return Response({"error": "Internal error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
         return Response({"status": "received"}, status=status.HTTP_200_OK)

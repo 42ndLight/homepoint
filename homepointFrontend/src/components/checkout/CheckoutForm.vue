@@ -258,6 +258,9 @@ const validatePhone = (phone) => {
 
 const validateEmail = (email) => {
   if (!email) return false
+
+  if (email.length > 254) return false;
+
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
@@ -354,7 +357,7 @@ const handleSubmit = async () => {
             form.value.email.trim()
         )
         if (paystackRes.success && paystackRes.authorization_url) {
-            window.location.href = paystackRes.authorization_url
+            globalThis.location.href = paystackRes.authorization_url
             return
         }
     }

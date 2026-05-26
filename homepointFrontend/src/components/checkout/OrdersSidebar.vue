@@ -339,6 +339,9 @@ const paystackForm = ref({ email: '', submitted: false })
 const cashForm = ref({ amount: null })
 
 const isPaystackEmailValid = computed(() => {
+
+  if (email.length > 254) return false;
+  
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paystackForm.value.email)
 })
 
@@ -465,7 +468,7 @@ const submitPaystackInit = async () => {
   )
 
   if (res.success && res.authorization_url) {
-    window.location.href = res.authorization_url
+    globalThis.location.href = res.authorization_url
   } else {
     toast.add({ 
       severity: 'error', 

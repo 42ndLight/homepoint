@@ -74,9 +74,22 @@ class PaystackCallbackView(APIView):
 
     def get(self, request):
         reference = request.GET.get('reference')
+        
+        # 1. Reject missing references immediately
         if not reference:
-            return redirect(f"{settings.CORS_ALLOWED_ORIGINS[0]}/pos?paystack_success=false")
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            if hasattr(settings, 'CORS_ALLOWED_ORIGINS') and settings.CORS_ALLOWED_ORIGINS:
+                frontend_url = settings.CORS_ALLOWED_ORIGINS[0]
+            return redirect(f"{frontend_url}/pos")
             
+        # 2. Strict Alphanumeric + Hyphen validation to block path traversal early        
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', reference):
+            logger.warning(f"Malicious reference format blocked: {reference}")
+            frontend_url = getattr(settings, 'FRONTEND_URL')
+            if hasattr(settings, 'CORS_ALLOWED_ORIGINS') and settings.CORS_ALLOWED_ORIGINS:
+                frontend_url = settings.CORS_ALLOWED_ORIGINS[0]
+            return redirect(f"{frontend_url}/pos")
+
         client = PaystackClient()
         response = client.verify_transaction(reference)
         

@@ -4,6 +4,7 @@ import hashlib
 from django.conf import settings
 from typing import Dict, Optional
 import logging
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -81,46 +82,53 @@ class PaystackClient:
                 return {"status": False, "message": data.get('message')}
                 
         except requests.RequestException as e:
-            logger.error(f"Paystack API error: {str(e)}")
+            logger.exception(f"Paystack API error: {str(e)}")
             return {"status": False, "message": str(e)}
     
-    def verify_transaction(self, reference: str) -> Dict:
-        """
-        Verify a transaction status.
+
+
+def verify_transaction(self, reference: str) -> Dict:
+    """
+    Verify a transaction status.
+    
+    Args:
+        reference: Transaction reference to verify
         
-        Args:
-            reference: Transaction reference to verify
+    Returns:
+        Dict with transaction details
+    """
+    # Clean and safely encode the user-controlled reference 
+    # to block path traversal attacks (e.g., converting '/' to '%2F')
+    safe_reference = quote(str(reference), safe='')
+    
+    url = f"{self.BASE_URL}/transaction/verify/{safe_reference}"
+    
+    try:
+        response = requests.get(url, headers=self.headers)
+        if response.status_code >= 400:
+            return {"status": False, "message": response.text}
             
-        Returns:
-            Dict with transaction details
-        """
-        url = f"{self.BASE_URL}/transaction/verify/{reference}"
+        data = response.json()
         
-        try:
-            response = requests.get(url, headers=self.headers)
-            if response.status_code >= 400:
-                return {"status": False, "message": response.text}
-                
-            data = response.json()
+        if data.get("status"):
+            transaction_data = data["data"]
+            return {
+                "status": True,
+                "reference": transaction_data["reference"],
+                "amount": transaction_data["amount"],
+                "paid_at": transaction_data.get("paid_at"),
+                "channel": transaction_data.get("channel"),
+                "transaction_status": transaction_data["status"],  # 'success', 'failed', 'abandoned'
+                "customer": transaction_data.get("customer"),
+                "metadata": transaction_data.get("metadata"),
+            }
+        else:
+            return {"status": False, "message": data.get("message")}
             
-            if data.get("status"):
-                transaction_data = data["data"]
-                return {
-                    "status": True,
-                    "reference": transaction_data["reference"],
-                    "amount": transaction_data["amount"],
-                    "paid_at": transaction_data.get("paid_at"),
-                    "channel": transaction_data.get("channel"),
-                    "transaction_status": transaction_data["status"],  # 'success', 'failed', 'abandoned'
-                    "customer": transaction_data.get("customer"),
-                    "metadata": transaction_data.get("metadata"),
-                }
-            else:
-                return {"status": False, "message": data.get("message")}
-                
-        except requests.RequestException as e:
-            logger.error(f"Paystack verify error: {str(e)}")
-            return {"status": False, "message": str(e)}
+    except requests.RequestException as e:
+        logger.error(f"Paystack verify error: {str(e)}")
+        return {"status": False, "message": str(e)}
+
     
     def validate_webhook(self, signature: str, payload: bytes) -> bool:
         """
