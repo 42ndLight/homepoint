@@ -339,11 +339,15 @@ const paystackForm = ref({ email: '', submitted: false })
 const cashForm = ref({ amount: null })
 
 const isPaystackEmailValid = computed(() => {
-
-  if (email.length > 254) return false;
+  const email = paystackForm.value.email;
   
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paystackForm.value.email)
-})
+  if (!email || email.length > 254) return false;
+
+  // Optimized, predictable, and production-ready email regex
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  return emailRegex.test(email);
+});
 
 const pendingOrders = computed(() => orderStore.pendingOrders)
 const completedOrders = computed(() =>

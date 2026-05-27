@@ -175,19 +175,19 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer',
 
 }
-
+'''
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-
+'''
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -214,6 +214,7 @@ if USE_AWS:
     
     # Optional: If using CloudFront to speed up asset delivery, add its URL here
     AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None)
+    CLOUDFRONT_DOMAIN = AWS_S3_CUSTOM_DOMAIN
     
     # S3 Performance Optimizations
     AWS_S3_OBJECT_PARAMETERS = {
