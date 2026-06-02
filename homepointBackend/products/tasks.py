@@ -70,13 +70,19 @@ def process_image_optimization_task(self, image_id, model_type):
             }
         )
 
+        # Save locally too for dual support
+        from django.core.files.base import ContentFile
+        filename = target_s3_key.split('/')[-1]
+        optimized_io.seek(0)
+        obj.local_image.save(filename, ContentFile(optimized_io.read()), save=False)
+
         # Successful save operations tracking updates execution blocks
         domain = settings.CLOUDFRONT_DOMAIN or f"{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com"
         obj.optimized_url = f"https://{domain}/{target_s3_key}"
         obj.optimization_status = 'done'
         obj.last_optimized_at = timezone.now()
         obj.error_log = None
-        obj.save(update_fields=['optimized_url', 'optimization_status', 'last_optimized_at', 'error_log'])
+        obj.save(update_fields=['optimized_url', 'local_image', 'optimization_status', 'last_optimized_at', 'error_log'])
         
         return f"Successfully optimized image ID: {image_id}"
 

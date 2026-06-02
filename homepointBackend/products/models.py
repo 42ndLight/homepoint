@@ -17,6 +17,9 @@ class ImageOptimizationMixin(models.Model):
     # The final optimized webp asset delivered through CloudFront
     optimized_url = models.URLField(max_length=1000, blank=True, null=True)
     
+    # Local fallback image stored in the media directory
+    local_image = models.ImageField(upload_to='optimized_images/', blank=True, null=True)
+    
     optimization_status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
     last_optimized_at = models.DateTimeField(blank=True, null=True)
     error_log = models.TextField(blank=True, null=True)

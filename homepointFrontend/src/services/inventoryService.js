@@ -90,6 +90,61 @@ class InventoryService {
   }
 
   /**
+   * Upload images for a product or variant
+   * @param {File[]} files - Array of image files
+   * @param {string} modelType - 'product' or 'variant'
+   * @param {number} targetId - The ID of the product or variant
+   */
+  static async uploadImages(files, modelType, targetId) {
+    try {
+      // Step 1: Get presigned URLs
+      const filenames = Array.from(files).map(f => f.name)
+      const presignResponse = await api.post('/products/presignurl/', {
+        filenames,
+        model_type: modelType,
+        target_id: targetId
+      })
+
+      const uploadResults = []
+      const uploadedKeys = []
+
+      // Step 2: Upload files directly to S3
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const presignData = presignResponse.uploads.find(u => u.original_name === file.name)
+        
+        if (!presignData) continue
+
+        const response = await fetch(presignData.upload_url, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name} to S3`)
+        }
+
+        uploadedKeys.push(presignData.target_key)
+      }
+
+      // Step 3: Finalize upload on backend
+      const finalizeResponse = await api.post('/products/invupload/', {
+        keys: uploadedKeys,
+        model_type: modelType,
+        target_id: targetId
+      })
+
+      return finalizeResponse
+    } catch (error) {
+      console.error('Image upload failed:', error)
+      throw error
+    }
+  }
+
+  /**
    * Get stock status (in-stock, low-stock, out-of-stock)
    * @param {number} quantity - Quantity value
    * @param {number} reorderPoint - Reorder threshold (default: 10)
