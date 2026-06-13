@@ -37,6 +37,7 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
 NGROK_URL = os.getenv('NGROK_URL')
 
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
+CORS_ALLOW_CREDENTIALS = True
 
 
 MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY')
