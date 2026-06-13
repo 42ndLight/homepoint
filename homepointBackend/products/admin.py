@@ -16,13 +16,20 @@ class InventoryInline(admin.TabularInline):
     readonly_fields = ['last_updated']
     fields = ['quantity', 'location']
 
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    readonly_fields = ['optimization_status', 'last_optimized_at', 'error_log', 'optimized_url']
+
+class VariantImageInline(admin.TabularInline):
+    model = VariantImage
+    extra = 1
+    readonly_fields = ['optimization_status', 'last_optimized_at', 'error_log', 'optimized_url']
 
 class VariantInline(admin.TabularInline):
     model = Variant
     extra = 1  # Allow adding new variants easily
     fields = ['sku', 'attributes', 'price', 'unit_type', 'stock_threshold']
-    inlines = [InventoryInline]  # Nested: edit inventory on variant
-
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -30,7 +37,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ['category', 'is_active']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
-    inlines = [VariantInline]  # Add/edit variants + inventory right here
+    inlines = [ProductImageInline, VariantInline]  # Add/edit variants + images right here
 
 
 @admin.register(Variant)
@@ -43,7 +50,7 @@ class VariantAdmin(admin.ModelAdmin):
         return obj.inventory.quantity if hasattr(obj, 'inventory') else 0
     quantity_in_stock.short_description = 'Stock Quantity'
 
-    inlines = [InventoryInline]
+    inlines = [VariantImageInline, InventoryInline]
 
 
 @admin.register(Inventory)

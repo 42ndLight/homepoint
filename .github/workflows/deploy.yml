@@ -12,11 +12,7 @@ env:
   ECR_FRONTEND_REPO: light42/pos-frontend
   S3_BUCKET: s3-pos-public-host
   # Default API URL if secret is not set
-  VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://test.betasys.co.ke/api' }}
-  VITE_STORE_NAME: HOMEPOINT HARDWARE STORE
-  VITE_STORE_TIN: 118184471
-  VITE_STORE_ADDRESS: Nairobi, Kenya
-  VITE_STORE_PHONE: +254 700 000000
+ 
 
 
 jobs:

@@ -66,29 +66,6 @@ services:
           --error-logfile -
       "
 
-  # Vue.js Frontend (pre-built)
-  frontend:
-    image: ${DOCKER_REGISTRY}/light/pos-frontend:${VERSION:-latest}
-    container_name: homepoint-frontend-prod
-    env_file:
-      - .env.prod
-    
-    # Don't expose port - only accessible through nginx
-    networks:
-      - homepoint_network
-    
-    depends_on:
-      - backend
-    
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    
-    restart: always
-
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
