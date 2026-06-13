@@ -65,6 +65,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getErrorMessage } from '@/utils/errorHandler'
+import config from '@/config/env'
 
 const username = ref('')
 const password = ref('')
@@ -85,7 +86,7 @@ const handleLogin = async () => {
 
   try {
     // Call login endpoint - note: this endpoint doesn't require auth, so we use fetch directly
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/users/auth/token/`, {
+    const response = await fetch(`${config.API_BASE_URL}/users/auth/token/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username.value, password: password.value }),
@@ -99,7 +100,7 @@ const handleLogin = async () => {
       try {
         // Temporarily set token to fetch profile
         const tempToken = data.access
-        const profileResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/users/auth/profile/`, {
+        const profileResponse = await fetch(`${config.API_BASE_URL}/users/auth/profile/`, {
           headers: {
             'Authorization': `Bearer ${tempToken}`,
           },

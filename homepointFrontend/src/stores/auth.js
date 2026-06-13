@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { jwtDecode } from 'jwt-decode'
 import api from '@/services/api'
+import config from '@/config/env'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('jwt_token'))
@@ -77,7 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/users/auth/token/refresh/`, {
+      const response = await fetch(`${config.API_BASE_URL}/users/auth/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: refreshToken.value }),
