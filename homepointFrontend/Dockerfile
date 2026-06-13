@@ -3,42 +3,25 @@ FROM node:20-alpine AS builder
 
 # Declare the argument
 ARG VITE_API_BASE_URL
-
-# Make it available as an environment variable for the build process
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-# Set work directory
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci
-
-# Copy source code
 COPY . .
-
-# Build the application
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Set environment variables
-ENV NODE_ENV=production
-
-# Set work directory
-WORKDIR /app
-
-# Production Stage
-FROM nginx:alpine
-
-# Copy built assets from builder stage to Nginx default html folder
+# Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy a custom nginx config for Vue (to handle SPA routing)
-# This prevents 404 errors when you refresh the page on a sub-route
+# Copy and setup entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Custom nginx config for SPA routing
 RUN echo 'server { \
     listen 80; \
     location / { \
@@ -49,6 +32,6 @@ RUN echo 'server { \
 }' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
-
-

@@ -172,6 +172,6 @@ class APIClient {
 }
 
 // Create and export API client instance
-const api = new APIClient(config.API_BASE_URL)
+const api = new APIClient(window.config?.API_BASE_URL || 'http://localhost:8000')
 
 export default api
