@@ -6,9 +6,9 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import F
-from .permissions import IsWarehouseStaff
-from .models import Category, Product, Variant, Inventory, StockMovement
-from .serializers import (
+from ..permissions import IsWarehouseStaff
+from ..models import Category, Product, Variant, Inventory, StockMovement
+from ..serializers import (
     CategorySerializer, ProductSerializer,
     VariantSerializer, InventorySerializer, get_user_role
 )
@@ -132,3 +132,4 @@ class InventoryViewSet(mixins.RetrieveModelMixin,
             return Response(serializer.data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

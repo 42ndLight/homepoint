@@ -10,6 +10,7 @@ from ..paystack.client import PaystackClient
 from ..models import PaystackTransaction, Account
 from ..serializers import PaystackInitializeSerializer
 import uuid
+import re
 import logging
 
 logger = logging.getLogger(__name__)

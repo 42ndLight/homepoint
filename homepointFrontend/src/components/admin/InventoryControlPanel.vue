@@ -135,7 +135,7 @@
                   </template>
                 </Column>
 
-                <Column header="Actions" :style="{ width: '200px' }">
+                <Column header="Actions" :style="{ width: '280px' }">
                   <template #body="{ data }">
                     <div class="flex gap-2">
                       <button
@@ -144,6 +144,13 @@
                       >
                         <i class="pi pi-pencil"></i>
                         Update Stock
+                      </button>
+                      <button
+                        @click="openImageUploadDialog(data)"
+                        class="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-xs font-semibold flex items-center gap-1"
+                      >
+                        <i class="pi pi-image"></i>
+                        Upload Image
                       </button>
                       <button
                         @click="confirmDelete(data)"
@@ -167,6 +174,73 @@
         </TabPanel>
       </TabPanels>
     </Tabs>
+
+    <!-- Image Upload Dialog -->
+    <Dialog v-model:visible="imageDialogVisible" header="Upload Variant Image" :modal="true" :style="{ width: '450px' }">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Variant</label>
+          <p class="text-gray-900 font-medium">{{ uploadTarget?.sku }}</p>
+          <p class="text-xs text-gray-600" v-if="uploadTarget?.attributes">
+            {{ formatAttributes(uploadTarget.attributes) }}
+          </p>
+        </div>
+
+        <div 
+          class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition cursor-pointer"
+          @click="$refs.fileInput.click()"
+        >
+          <input 
+            type="file" 
+            ref="fileInput" 
+            class="hidden" 
+            accept="image/*" 
+            multiple 
+            @change="handleFileSelect" 
+          />
+          <div v-if="!selectedFiles.length">
+            <i class="pi pi-cloud-upload text-4xl text-gray-400 mb-2"></i>
+            <p class="text-gray-600">Click or drag images here to upload</p>
+            <p class="text-xs text-gray-400 mt-1">Supports JPG, PNG, WEBP</p>
+          </div>
+          <div v-else class="space-y-2">
+            <div v-for="(file, index) in selectedFiles" :key="index" class="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+              <span class="truncate max-w-[200px]">{{ file.name }}</span>
+              <button @click.stop="removeFile(index)" class="text-red-500 hover:text-red-700">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+            <p class="text-blue-600 text-sm font-semibold mt-4">Add more files...</p>
+          </div>
+        </div>
+
+        <div v-if="isUploadingImages" class="space-y-2">
+          <p class="text-sm font-medium text-blue-700">Uploading and processing...</p>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div class="bg-blue-600 h-2.5 rounded-full animate-pulse" style="width: 100%"></div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          @click="imageDialogVisible = false"
+          class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition"
+          :disabled="isUploadingImages"
+        >
+          Cancel
+        </button>
+        <button
+          @click="uploadImages"
+          :disabled="isUploadingImages || !selectedFiles.length"
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50"
+        >
+          <i class="pi pi-upload mr-2" v-if="!isUploadingImages"></i>
+          <i class="pi pi-spin pi-spinner mr-2" v-else></i>
+          {{ isUploadingImages ? 'Uploading...' : 'Upload' }}
+        </button>
+      </template>
+    </Dialog>
 
     <!-- Edit Dialog (kept outside tabs for overlay) -->
     <Dialog v-model:visible="editDialogVisible" header="Edit Stock" :modal="true" :style="{ width: '400px' }">
@@ -310,6 +384,12 @@ const newQuantity = ref(null)
 const movementType = ref('IN')
 const updateNotes = ref('')
 
+const imageDialogVisible = ref(false)
+const isUploadingImages = ref(false)
+const uploadTarget = ref(null)
+const selectedFiles = ref([])
+const fileInput = ref(null)
+
 const canDelete = ref(false)
 
 let searchTimeout = null
@@ -320,6 +400,56 @@ const debounceSearch = () => {
     currentPage.value = 0
     loadInventory()
   }, 300)
+}
+
+const openImageUploadDialog = (item) => {
+  uploadTarget.value = item
+  selectedFiles.value = []
+  imageDialogVisible.value = true
+}
+
+const handleFileSelect = (event) => {
+  const files = event.target.files
+  if (!files) return
+  
+  for (let i = 0; i < files.length; i++) {
+    selectedFiles.value.push(files[i])
+  }
+}
+
+const removeFile = (index) => {
+  selectedFiles.value.splice(index, 1)
+}
+
+const uploadImages = async () => {
+  if (!selectedFiles.value.length || !uploadTarget.value) return
+
+  isUploadingImages.value = true
+  try {
+    await InventoryService.uploadImages(
+      selectedFiles.value,
+      'variant',
+      uploadTarget.value.id
+    )
+
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Images uploaded successfully. Backend is optimizing them.',
+      life: 3000,
+    })
+
+    imageDialogVisible.value = false
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: 'Upload Error',
+      detail: err.message || 'Failed to upload images',
+      life: 5000,
+    })
+  } finally {
+    isUploadingImages.value = false
+  }
 }
 
 const formatAttributes = (attributes) => {

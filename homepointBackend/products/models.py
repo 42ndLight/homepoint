@@ -1,6 +1,32 @@
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
+import os
+from django.utils import timezone
+
+class ImageOptimizationMixin(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('done', 'Done'),
+        ('failed', 'Failed'),
+    ]
+    
+    # Store the initial unoptimized file link (either external or raw S3 upload)
+    raw_external_url = models.URLField(max_length=1000)
+    # The final optimized webp asset delivered through CloudFront
+    optimized_url = models.URLField(max_length=1000, blank=True, null=True)
+    
+    # Local fallback image stored in the media directory
+    local_image = models.ImageField(upload_to='optimized_images/', blank=True, null=True)
+    
+    optimization_status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    last_optimized_at = models.DateTimeField(blank=True, null=True)
+    error_log = models.TextField(blank=True, null=True)
+
+    class Meta:
+        abstract = True
+
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)  # e.g., "Pipes", "Boards", "Doors"
@@ -35,10 +61,14 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-
-class ProductImage(models.Model):
+class ProductImage(ImageOptimizationMixin):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images', null=True, blank=True)
-    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def get_s3_key(self):
+        # Keeps filenames completely isolated & unique
+        filename = f"{self.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.webp"
+        return f"products/{self.product_id}/{filename}"
 
 class Variant(models.Model):
     UNIT_CHOICES = [
@@ -67,9 +97,15 @@ class Variant(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
 
-class VariantImage(models.Model):
+
+class VariantImage(ImageOptimizationMixin):
     variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name='images', null=True, blank=True)
-    image = models.ImageField(upload_to='variants/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def get_s3_key(self):
+        # Keeps filenames completely isolated & unique
+        filename = f"{self.id}_{timezone.now().strftime('%Y%m%d%H%M%S')}.webp"
+        return f"variants/{self.variant_id}/{filename}"
 
 class Inventory(models.Model):
     variant = models.OneToOneField(Variant, on_delete=models.CASCADE, related_name='inventory')
