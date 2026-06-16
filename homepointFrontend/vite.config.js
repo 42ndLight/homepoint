@@ -26,17 +26,21 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-  },/*
   server: {
     // Allows access from other devices/hosts
-    host: '0.0.0.0', 
+    host: true,
+    port: 5173,
     // Explicitly allow the ngrok host
-    allowedHosts: [ngrokHost], 
+    allowedHosts: [ngrokHost],
     hmr: {
       // Use the ngrok host for HMR connections
-      host: ngrokHost, 
+      host: ngrokHost,
       protocol: 'wss', // Use secure websockets
       clientPort: 443 // Standard HTTPS port
     }
-  },*/
+  },
+  preview: {
+    host: true,
+    port: 4173
+  }
 })
