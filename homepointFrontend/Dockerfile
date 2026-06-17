@@ -33,6 +33,7 @@ RUN chmod +x /entrypoint.sh
 # Custom nginx config for SPA routing
 RUN echo 'server { \
     listen 80; \
+    include /etc/nginx/mime.types; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
