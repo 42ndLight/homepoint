@@ -261,7 +261,7 @@ const validateEmail = (email) => {
 
   if (email.length > 254) return false;
 
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  return /^[^\s@]+@[^\s@\.]+(?:\.[^\s@\.]+)+$/.test(email)
 }
 
 const formatPhoneForAPI = (phone) => {
