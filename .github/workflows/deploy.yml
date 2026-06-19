@@ -6,13 +6,16 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_BACKEND_REPO: light42/pos-backend
   ECR_FRONTEND_REPO: light42/pos-frontend
   S3_BUCKET: s3-pos-public-host
   # Default API URL if secret is not set
- 
+  VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'https://test.betasys.co.ke/api' }}
+  VITE_STORE_NAME: HOMEPOINT HARDWARE STORE
+  VITE_STORE_TIN: 118184471
+  VITE_STORE_ADDRESS: Nairobi, Kenya
+  VITE_STORE_PHONE: +254 700 000000
 
 
 jobs:
@@ -27,7 +30,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 24
+        node-version: 20
         cache: 'npm'
         cache-dependency-path: './homepointFrontend/package-lock.json'
 
