@@ -37,7 +37,13 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 )
 
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK")
+
 urlpatterns = [
+    path('health/', health_check),
     path('admin/', admin.site.urls),
     path('silk/', include('silk.urls', namespace='silk')),
     path('users/', include('users.urls')),

@@ -19,24 +19,32 @@ export default defineConfig({
     vue(),
     vueJsx(),
     tailwindcss(),
-    vueDevTools(),
+    process.env.NODE_ENV !== 'production' && vueDevTools(),
     VitePWA({ registerType: 'autoUpdate', devOptions: { enabled: true }, manifest: {} }),
-  ],
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-  },/*
+  },
   server: {
     // Allows access from other devices/hosts
-    host: '0.0.0.0', 
-    // Explicitly allow the ngrok host
-    allowedHosts: [ngrokHost], 
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+    // Allows Docker network proxies or service names to request files
+    allowedHosts: true,
+    // Permits your browser to safely request files across your docker-compose local containers
+    cors: true,
     hmr: {
       // Use the ngrok host for HMR connections
-      host: ngrokHost, 
+      host: ngrokHost,
       protocol: 'wss', // Use secure websockets
       clientPort: 443 // Standard HTTPS port
     }
-  },*/
+  },
+  preview: {
+    host: true,
+    port: 4173
+  }
 })

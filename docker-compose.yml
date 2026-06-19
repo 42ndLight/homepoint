@@ -48,7 +48,7 @@ services:
         condition: service_healthy
     
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/login/" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -72,14 +72,14 @@ services:
     container_name: homepoint-frontend
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      VITE_STORE_NAME: ${VITE_STORE_NAME:-Homepoint POS}
+      VITE_STORE_TIN: ${VITE_STORE_TIN:-}
+      VITE_STORE_ADDRESS: ${VITE_STORE_ADDRESS:-}
+      VITE_STORE_PHONE: ${VITE_STORE_PHONE:-}
       NODE_ENV: ${NODE_ENV:-production}
     
-    volumes:
-      - ./homepointFrontend/src:/app/src
-      - ./homepointFrontend/public:/app/public
-    
     ports:
-      - "5173:5173"
+      - "5173:80"
     
     networks:
       - homepoint_network
@@ -88,7 +88,7 @@ services:
       - backend
     
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -97,20 +97,20 @@ services:
     restart: unless-stopped
 
   # Optional: Nginx Reverse Proxy (uncomment to use)
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: homepoint-nginx
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   networks:
-  #     - homepoint_network
-  #   depends_on:
-  #     - frontend
-  #     - backend
-  #   restart: unless-stopped
+  nginx:
+    image: nginx:alpine
+    container_name: homepoint-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - homepoint_network
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
 
 volumes:
   postgres_data:
