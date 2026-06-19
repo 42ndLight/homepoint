@@ -64,7 +64,7 @@ import Message from 'primevue/message'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getErrorMessage } from '@/utils/errorHandler'
+import { getErrorMessage, APIError } from '@/utils/errorHandler'
 import config from '@/config/env'
 
 const username = ref('')
@@ -92,44 +92,69 @@ const handleLogin = async () => {
       body: JSON.stringify({ username: username.value, password: password.value }),
     })
 
-    const data = await response.json()
+    const contentType = response.headers.get('content-type')
+    const isJSON = contentType && contentType.includes('application/json')
+    let data = null
 
-    if (response.ok) {
-      // Backend returns {access, refresh} tokens
-      // Fetch user profile to get role information
+    if (isJSON) {
       try {
-        // Temporarily set token to fetch profile
-        const tempToken = data.access
-        const profileResponse = await fetch(`${config.API_BASE_URL}/users/auth/profile/`, {
-          headers: {
-            'Authorization': `Bearer ${tempToken}`,
-          },
-        })
+        data = await response.json()
+      } catch (e) {
+        // Fallback if parsing fails
+      }
+    }
 
-        let userData = null
-        if (profileResponse.ok) {
-          userData = await profileResponse.json()
+    if (!response.ok) {
+      throw new APIError(
+        data?.detail || data?.message || `Server error (HTTP ${response.status})`,
+        response.status,
+        data
+      )
+    }
+
+    if (!data) {
+      throw new APIError('Invalid server response format.', response.status)
+    }
+
+    // Backend returns {access, refresh} tokens
+    // Fetch user profile to get role information
+    try {
+      // Temporarily set token to fetch profile
+      const tempToken = data.access
+      const profileResponse = await fetch(`${config.API_BASE_URL}/users/auth/profile/`, {
+        headers: {
+          'Authorization': `Bearer ${tempToken}`,
+        },
+      })
+
+      let userData = null
+      if (profileResponse.ok) {
+        const profileContentType = profileResponse.headers.get('content-type')
+        if (profileContentType && profileContentType.includes('application/json')) {
+          try {
+            userData = await profileResponse.json()
+          } catch (e) {
+            // Keep userData as null
+          }
         }
+      }
 
-        // Login with tokens and user data
-        await auth.login(data.access, data.refresh, userData)
+      // Login with tokens and user data
+      await auth.login(data.access, data.refresh, userData)
 
-        // Redirect based on role
-        const role = userData?.role || (auth.user?.role)
-        if (role === 'admin' || auth.isAdmin) {
-          router.push('/admin')
-        } else if (['staff', 'cashier'].includes(role)) {
-          router.push('/pos')
-        } else {
-          router.push('/catalog')
-        }
-      } catch (profileError) {
-        // If profile fetch fails, still login with token data
-        await auth.login(data.access, data.refresh)
+      // Redirect based on role
+      const role = userData?.role || (auth.user?.role)
+      if (role === 'admin' || auth.isAdmin) {
+        router.push('/admin')
+      } else if (['staff', 'cashier'].includes(role)) {
+        router.push('/pos')
+      } else {
         router.push('/catalog')
       }
-    } else {
-      errorMessage.value = getErrorMessage({ message: data.detail || 'Login failed', status: response.status, data })
+    } catch (profileError) {
+      // If profile fetch fails, still login with token data
+      await auth.login(data.access, data.refresh)
+      router.push('/catalog')
     }
   } catch (err) {
     console.error('Login error:', err)
