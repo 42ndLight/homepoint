@@ -21,6 +21,12 @@ class Order(models.Model):
 
     class Meta:
             ordering = ['-id']
+            indexes = [
+            models.Index(fields=['user', '-created_at']),  # User's orders
+            models.Index(fields=['status', '-created_at']),  # Status queries
+            models.Index(fields=['phone_number']),  # Phone lookup
+            models.Index(fields=['-created_at']),  # Recent orders
+        ]
 
     def __str__(self):
         return f"Order #{self.id} - {self.phone_number}"
@@ -63,6 +69,10 @@ class OrderItem(models.Model):
 
     class Meta:
         unique_together = ('order', 'variant')  # Prevent duplicates in same order
+        indexes = [
+            models.Index(fields=['order', 'variant']),  # Explicit for query planner
+            models.Index(fields=['variant']),  # Variant lookups
+        ]
 
     def __str__(self):
         return f"{self.quantity} × {self.variant.sku}"
