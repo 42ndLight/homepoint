@@ -35,7 +35,12 @@ class User(AbstractUser):
     )
 
     class Meta:
-        indexes = [models.Index(fields=['role', 'phone_number'])]
+        indexes = [
+        models.Index(fields=['role', 'phone_number']),
+        models.Index(fields=['email']),  # Email login
+        models.Index(fields=['username']),  # Username login
+        models.Index(fields=['is_staff', 'is_active']),
+        ]
         permissions = [  # Custom perms for RBAC
             ("can_manage_inventory", "Can add/edit/delete inventory"),
             ("can_view_sales", "Can view orders and sales"),

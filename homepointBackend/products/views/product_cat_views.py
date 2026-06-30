@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import F
+from django.db.models import Prefetch
 from ..permissions import IsWarehouseStaff
 from ..models import Category, Product, Variant, Inventory, StockMovement
 from ..serializers import (
@@ -43,7 +44,8 @@ class FullCRUDViewSet(mixins.CreateModelMixin,
 
 class CategoryViewSet(FullCRUDViewSet):
     queryset = Category.objects.all().prefetch_related(
-        'products__variants__inventory' 
+        'products__variants__inventory',
+        'products__images'
     )
     serializer_class = CategorySerializer
     lookup_field = 'slug'
@@ -52,9 +54,6 @@ class CategoryViewSet(FullCRUDViewSet):
 
 
 class ProductViewSet(FullCRUDViewSet):
-    queryset = Product.objects.filter(is_active=True).prefetch_related(
-        'variants__inventory'
-    )
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -62,7 +61,18 @@ class ProductViewSet(FullCRUDViewSet):
     ordering_fields = ['base_price']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        variant_prefetch = Prefetch(
+            'variants',
+            Variant.objects.prefetch_related(
+                'inventory',
+                'images'
+            )
+        )
+        queryset = Product.objects.filter(is_active=True).prefetch_related(
+            variant_prefetch,
+            'images' 
+        ).select_related('category')
+
         category_id = self.request.query_params.get('category')
         search = self.request.query_params.get('search')
 
@@ -76,10 +86,17 @@ class ProductViewSet(FullCRUDViewSet):
 
 
 class VariantViewSet(FullCRUDViewSet):
-    queryset = Variant.objects.select_related('product').prefetch_related('inventory')
     serializer_class = VariantSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'attributes']
+
+    def get_queryset(self):
+        return Variant.objects.select_related(
+            'product'
+        ).prefetch_related(
+            'inventory',
+            'images'
+        )
 
 
 class InventoryViewSet(mixins.RetrieveModelMixin,

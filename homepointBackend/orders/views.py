@@ -4,24 +4,34 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import F
 from .models import Order, OrderItem
+from django.db.models import Prefetch
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]  # Allow guest checkout via phone
-    queryset = Order.objects.all().select_related('items__variant')
+
+    def get_queryset(self):
+        queryset = Order.objects.select_related(
+            'user'
+        ).prefetch_related(
+            Prefetch(
+                'items',
+                queryset=OrderItem.objects.select_related('variant__product', 'variant__inventory')
+            )
+        )
+
+        if self.request.user.is_authenticated:
+            if self.request.user.is_staff:
+                return queryset.all()
+            return queryset.filter(user=self.request.user)
+        return queryset.none()
+
     ordering = ['-created_at']
 
     def get_serializer_class(self):
         if self.action == 'create':
             return OrderCreateSerializer
         return OrderDetailSerializer
-
-    def get_queryset(self):
-        if self.request.user.is_staff:
-            return Order.objects.all()
-        return Order.objects.filter(user=self.request.user)
-
-    
 
     @transaction.atomic
     def create(self, request):
