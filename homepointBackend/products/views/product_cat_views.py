@@ -7,11 +7,19 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import F
 from django.db.models import Prefetch
+from django.core.cache import cache
+
 from ..permissions import IsWarehouseStaff
 from ..models import Category, Product, Variant, Inventory, StockMovement
 from ..serializers import (
     CategorySerializer, ProductSerializer,
     VariantSerializer, InventorySerializer, get_user_role
+)
+from ..cache_keys import (
+    get_categories_list_key, get_category_detail_key,
+    get_products_list_key, get_product_detail_key,
+    get_variants_list_key,
+    invalidate_category_cache, invalidate_product_cache, invalidate_variant_cache
 )
 
 class BaseProductViewSet(viewsets.GenericViewSet):
@@ -52,6 +60,47 @@ class CategoryViewSet(FullCRUDViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
 
+    def list(self, request, *args, **kwargs):
+        """Cache category list for 5 minutes."""
+        cache_key = get_categories_list_key(request.query_params)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 300)  # 5 minutes
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        """Cache individual category for 10 minutes."""
+        slug = kwargs.get('slug')
+        cache_key = get_category_detail_key(slug)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 600)  # 10 minutes
+        return response
+
+    def perform_create(self, serializer):
+        """Invalidate cache on create."""
+        serializer.save()
+        invalidate_category_cache()
+
+    def perform_update(self, serializer):
+        """Invalidate cache on update."""
+        instance = serializer.save()
+        invalidate_category_cache()
+        cache.delete(get_category_detail_key(instance.slug))
+
+    def perform_destroy(self, instance):
+        """Invalidate cache on delete."""
+        slug = instance.slug
+        instance.delete()
+        invalidate_category_cache()
+        cache.delete(get_category_detail_key(slug))
+
 
 class ProductViewSet(FullCRUDViewSet):
     serializer_class = ProductSerializer
@@ -84,6 +133,50 @@ class ProductViewSet(FullCRUDViewSet):
             )
         return queryset
 
+    def list(self, request, *args, **kwargs):
+        """Cache product list for 5 minutes."""
+        cache_key = get_products_list_key(request.query_params)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 300)
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        """Cache individual product for 10 minutes."""
+        slug = kwargs.get('slug')
+        cache_key = get_product_detail_key(slug)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 600)
+        return response
+
+    def perform_create(self, serializer):
+        """Invalidate cache on create."""
+        serializer.save()
+        invalidate_product_cache()
+        invalidate_category_cache()
+
+    def perform_update(self, serializer):
+        """Invalidate cache on update."""
+        instance = serializer.save()
+        invalidate_product_cache()
+        cache.delete(get_product_detail_key(instance.slug))
+        invalidate_category_cache()
+
+    def perform_destroy(self, instance):
+        """Invalidate cache on delete."""
+        slug = instance.slug
+        instance.delete()
+        invalidate_product_cache()
+        cache.delete(get_product_detail_key(slug))
+        invalidate_category_cache()
+
 
 class VariantViewSet(FullCRUDViewSet):
     serializer_class = VariantSerializer
@@ -97,6 +190,35 @@ class VariantViewSet(FullCRUDViewSet):
             'inventory',
             'images'
         )
+
+    def list(self, request, *args, **kwargs):
+        """Cache variant list for 5 minutes."""
+        cache_key = get_variants_list_key(request.query_params)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, 300)
+        return response
+
+    def perform_create(self, serializer):
+        """Invalidate cache on create."""
+        serializer.save()
+        invalidate_variant_cache()
+        invalidate_product_cache()
+
+    def perform_update(self, serializer):
+        """Invalidate cache on update."""
+        serializer.save()
+        invalidate_variant_cache()
+        invalidate_product_cache()
+
+    def perform_destroy(self, instance):
+        """Invalidate cache on delete."""
+        instance.delete()
+        invalidate_variant_cache()
+        invalidate_product_cache()
 
 
 class InventoryViewSet(mixins.RetrieveModelMixin,
@@ -149,4 +271,3 @@ class InventoryViewSet(mixins.RetrieveModelMixin,
             return Response(serializer.data)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
