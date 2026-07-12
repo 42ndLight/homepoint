@@ -36,6 +36,7 @@ services:
     volumes:
       - ./homepointBackend:/app
       - static_volume:/app/staticfiles_collected
+      - shared_media:/app/media
     
     ports:
       - "8000:8000"
@@ -102,6 +103,8 @@ services:
     container_name: homepoint-nginx
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/staticfiles_collected
+      - shared_media:/app/media
     ports:
       - "80:80"
       - "443:443"
@@ -143,6 +146,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
       - ./homepointBackend:/app
+      - shared_media:/app/media
     networks:
       - homepoint_network
     depends_on:
@@ -167,6 +171,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
       - ./homepointBackend:/app
+      - shared_media:/app/media
     networks:
       - homepoint_network
     depends_on:
@@ -180,6 +185,8 @@ volumes:
   postgres_data:
     driver: local
   static_volume:
+    driver: local
+  shared_media:
     driver: local
   redis_data:
     driver: local

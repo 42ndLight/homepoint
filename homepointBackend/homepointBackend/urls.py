@@ -46,6 +46,7 @@ urlpatterns = [
     path('health/', health_check),
     path('admin/', admin.site.urls),
     path('silk/', include('silk.urls', namespace='silk')),
+    path('api/', include('files.urls')),
     path('users/', include('users.urls')),
     path('products/', include('products.urls')),
     path('orders/', include('orders.urls')),
