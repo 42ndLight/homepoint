@@ -50,7 +50,26 @@ class FullCRUDViewSet(mixins.CreateModelMixin,
     pass
 
 
-class CategoryViewSet(FullCRUDViewSet):
+class CachedListRetrieveMixin:
+    """Shared helper for caching list and retrieve views."""
+    def cached_list(self, cache_key, timeout, request, *args, **kwargs):
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            return Response(cached_response)
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout)
+        return response
+
+    def cached_retrieve(self, cache_key, timeout, request, *args, **kwargs):
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            return Response(cached_response)
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout)
+        return response
+
+
+class CategoryViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
     queryset = Category.objects.all().prefetch_related(
         'products__variants__inventory',
         'products__images'
@@ -63,25 +82,13 @@ class CategoryViewSet(FullCRUDViewSet):
     def list(self, request, *args, **kwargs):
         """Cache category list for 5 minutes."""
         cache_key = get_categories_list_key(request.query_params)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            return Response(cached_response)
-
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 300)  # 5 minutes
-        return response
+        return self.cached_list(cache_key, 300, request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         """Cache individual category for 10 minutes."""
         slug = kwargs.get('slug')
         cache_key = get_category_detail_key(slug)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            return Response(cached_response)
-
-        response = super().retrieve(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 600)  # 10 minutes
-        return response
+        return self.cached_retrieve(cache_key, 600, request, *args, **kwargs)
 
     def perform_create(self, serializer):
         """Invalidate cache on create."""
@@ -102,7 +109,7 @@ class CategoryViewSet(FullCRUDViewSet):
         cache.delete(get_category_detail_key(slug))
 
 
-class ProductViewSet(FullCRUDViewSet):
+class ProductViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
     serializer_class = ProductSerializer
     lookup_field = 'slug'
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -134,27 +141,16 @@ class ProductViewSet(FullCRUDViewSet):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        """Cache product list for 5 minutes."""
-        cache_key = get_products_list_key(request.query_params)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            return Response(cached_response)
-
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 300)
-        return response
+        """Cache product list for 5 minutes, scoped by user role."""
+        role = get_user_role(request)
+        cache_key = get_products_list_key(request.query_params, role)
+        return self.cached_list(cache_key, 300, request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         """Cache individual product for 10 minutes."""
         slug = kwargs.get('slug')
         cache_key = get_product_detail_key(slug)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            return Response(cached_response)
-
-        response = super().retrieve(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 600)
-        return response
+        return self.cached_retrieve(cache_key, 600, request, *args, **kwargs)
 
     def perform_create(self, serializer):
         """Invalidate cache on create."""
@@ -178,7 +174,7 @@ class ProductViewSet(FullCRUDViewSet):
         invalidate_category_cache()
 
 
-class VariantViewSet(FullCRUDViewSet):
+class VariantViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
     serializer_class = VariantSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'attributes']
@@ -194,13 +190,7 @@ class VariantViewSet(FullCRUDViewSet):
     def list(self, request, *args, **kwargs):
         """Cache variant list for 5 minutes."""
         cache_key = get_variants_list_key(request.query_params)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            return Response(cached_response)
-
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 300)
-        return response
+        return self.cached_list(cache_key, 300, request, *args, **kwargs)
 
     def perform_create(self, serializer):
         """Invalidate cache on create."""
