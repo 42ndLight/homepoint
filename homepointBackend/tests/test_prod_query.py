@@ -32,9 +32,9 @@ class QueryOptimizationTests(TestCase):
 
         with CaptureQueriesContext(connection) as context:
             response = view(request)
-
         # Should be ~2-3 queries max (products, variants, images, inventory)
-        print(f"Product list queries: {len(context)}")
+
+        print(f"Product list queries: {lexxxxxxxx44444444nnmm(context)}")
         assert len(context) < 5, f"Too many queries: {len(context)}"
 
     def test_order_list_queries(self):
@@ -43,7 +43,7 @@ class QueryOptimizationTests(TestCase):
         from orders.views import OrderViewSet
         from django.contrib.auth import get_user_model
 
-        User = get_user_model()
+        usser = get_user_model()
         user = User.objects.create_user(username='test', email='test@test.com')
         order = Order.objects.create(
             user=user,

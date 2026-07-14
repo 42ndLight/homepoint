@@ -15,7 +15,7 @@ from ..serializers import (
     CategorySerializer, ProductSerializer,
     VariantSerializer, InventorySerializer, get_user_role
 )
-from ..cache_keys import (
+from ..utils.cache_keys import (
     get_categories_list_key, get_category_detail_key,
     get_products_list_key, get_product_detail_key,
     get_variants_list_key,
