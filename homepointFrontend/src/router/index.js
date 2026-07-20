@@ -39,6 +39,13 @@ const router = createRouter({
       meta: { title: 'Admin Dashboard' },
     },
     {
+      path: '/admin/import',
+      name: 'product-import',
+      component: () => import('@/views/admin/ProductImportView.vue'),
+      beforeEnter: requireRole(['admin']),
+      meta: { title: 'Product Import' },
+    },
+    {
       path: '/catalog',
       name: 'catalog',
       component: () => import('@/views/catalog/ProductCatalogView.vue'),

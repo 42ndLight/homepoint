@@ -7,7 +7,6 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
-const ngrokHost = 'lucien-fledgy-nonoptimistically.ngrok-free.dev'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -35,13 +34,7 @@ export default defineConfig({
     // Allows Docker network proxies or service names to request files
     allowedHosts: true,
     // Permits your browser to safely request files across your docker-compose local containers
-    cors: true,
-    hmr: {
-      // Use the ngrok host for HMR connections
-      host: ngrokHost,
-      protocol: 'wss', // Use secure websockets
-      clientPort: 443 // Standard HTTPS port
-    }
+    cors: true
   },
   preview: {
     host: true,

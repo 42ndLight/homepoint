@@ -13,7 +13,7 @@ import App from './App.vue'
 import router from './router'
 
 import 'primeicons/primeicons.css'
-import './assests/css/style.css'
+import './assets/css/style.css'
 import './assets/css/print.css'
 
 

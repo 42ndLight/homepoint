@@ -34,6 +34,13 @@ class Category(models.Model):
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='subcategories')  # For hierarchy, e.g., "Building Materials" > "Pipes"
     description = models.TextField(blank=True)  # Optional short desc for SEO/UI
 
+    class Meta:
+            ordering = ['-id']
+            indexes = [
+            models.Index(fields=['parent', 'name']),  # For subcategory lookups
+            models.Index(fields=['slug']),  # Already unique, but explicit for query planner
+        ]
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
@@ -51,7 +58,12 @@ class Product(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-            ordering = ['-id']
+        ordering = ['-id']
+        indexes = [
+            models.Index(fields=['category', 'is_active']),  # Filter by category
+            models.Index(fields=['is_active', '-id']),  # List active products
+            models.Index(fields=['slug']),  # Slug lookups
+        ]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -93,6 +105,13 @@ class Variant(models.Model):
     stock_threshold = models.PositiveIntegerField(default=10)  # Low-stock alert trigger
     item_code = models.CharField(max_length=50, help_text="HS Code / eTIMS Item Code")
     tax_type = models.CharField(max_length=2, choices=TAX_CHOICES, default='A')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['product', 'sku']),  # Variant lookups
+            models.Index(fields=['sku']),  # Direct SKU search
+            models.Index(fields=['product', 'price']),  # Price filtering
+        ]
 
     def __str__(self):
         return f"{self.product.name} - {self.sku}"
@@ -137,3 +156,8 @@ class StockMovement(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['inventory', '-created_at']),  # Audit trail
+            models.Index(fields=['user', '-created_at']),  # User activity
+            models.Index(fields=['movement_type', '-created_at']),  # Movement type filter
+        ]

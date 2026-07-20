@@ -63,17 +63,21 @@ INSTALLED_APPS = [
     'payments',
     'users',
     'products',
-    'reports', 
+    'reports',
+    'files',
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
     'silk',
     'drf_yasg',
     'storages',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -261,3 +265,56 @@ else:
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
+
+# Cache Configuration
+redis_url = os.environ.get('REDIS_URL')
+if not redis_url and os.environ.get('DB_HOST') == 'db':
+    # We are likely running in Docker where the redis container is available
+    redis_url = 'redis://redis:6379/1'
+
+if redis_url:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': redis_url,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
+# Celery Configuration
+# Broker/result backend (can be overridden via environment)
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
+# By default keep Redis as result backend for performance, but optionally
+# use the Django DB (django-celery-results) for durable result storage.
+USE_DB_FOR_CELERY_RESULTS = config('USE_DB_FOR_CELERY_RESULTS', default=False, cast=bool)
+if USE_DB_FOR_CELERY_RESULTS:
+    CELERY_RESULT_BACKEND = 'django-db'
+else:
+    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# Connection and retry tuning for more reliable operations in Docker
+# Tune via env vars when necessary
+CELERY_BROKER_POOL_LIMIT = int(os.environ.get('CELERY_BROKER_POOL_LIMIT', 10))
+CELERY_BROKER_CONNECTION_TIMEOUT = int(os.environ.get('CELERY_BROKER_CONNECTION_TIMEOUT', 30))
+CELERY_BROKER_HEARTBEAT = int(os.environ.get('CELERY_BROKER_HEARTBEAT', 15))
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': int(os.environ.get('CELERY_VISIBILITY_TIMEOUT', 3600)),
+}
+# Result expiration (seconds) when using persistent backends (django-db or redis)
+CELERY_RESULT_EXPIRES = int(os.environ.get('CELERY_RESULT_EXPIRES', 60*60*24))
+# Control whether tasks persist results (set False for fire-and-forget tasks)
+CELERY_TASK_IGNORE_RESULT = False
