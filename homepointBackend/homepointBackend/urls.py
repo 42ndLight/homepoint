@@ -38,7 +38,9 @@ schema_view = get_schema_view(
 )
 
 from django.http import HttpResponse
+from django.views.decorators.http import require_http_methods
 
+@require_http_methods(["GET"])
 def health_check(request):
     return HttpResponse("OK")
 
@@ -46,6 +48,7 @@ urlpatterns = [
     path('health/', health_check),
     path('admin/', admin.site.urls),
     path('silk/', include('silk.urls', namespace='silk')),
+    path('api/', include('files.urls')),
     path('users/', include('users.urls')),
     path('products/', include('products.urls')),
     path('orders/', include('orders.urls')),

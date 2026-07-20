@@ -32,9 +32,9 @@ class QueryOptimizationTests(TestCase):
 
         with CaptureQueriesContext(connection) as context:
             response = view(request)
-
         # Should be ~2-3 queries max (products, variants, images, inventory)
-        print(f"Product list queries: {len(context)}")
+
+        print(f"Product list queries: {lexxxxxxxx44444444nnmm(context)}")
         assert len(context) < 5, f"Too many queries: {len(context)}"
 
     def test_order_list_queries(self):

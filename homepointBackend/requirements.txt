@@ -16,7 +16,8 @@ click==8.4.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
 click-repl==0.3.0
-cryptography==48.0.0
+cron-descriptor==1.4.5
+cryptography==48.0.1
 deprecation==2.1.0
 dj-database-url==3.1.2
 Django==6.0.5
@@ -27,6 +28,8 @@ django-model-utils==5.0.0
 django-redis==7.0.0
 django-silk==5.5.0
 django-storages==1.14.6
+django-timezone-field==7.2.2
+django_celery_results==2.6.0
 djangorestframework==3.17.1
 djangorestframework_simplejwt==5.5.1
 drf-yasg==1.21.15
@@ -70,6 +73,7 @@ pyiceberg==0.11.1
 PyJWT==2.13.0
 pyparsing==3.3.2
 pyroaring==1.1.0
+python-crontab==3.3.0
 python-dateutil==2.9.0.post0
 python-decouple==3.8
 python-dotenv==1.2.2
@@ -101,5 +105,6 @@ uvicorn==0.47.0
 vine==5.1.0
 wcwidth==0.7.0
 websockets==15.0.1
+whitenoise==6.12.0
 yarl==1.24.2
 zstandard==0.25.0

@@ -119,6 +119,7 @@ services:
     build:
       context: ./homepointBackend
       dockerfile: Dockerfile
+    image: homepoint-backend:prod
     container_name: homepoint-celery
     command: celery -A homepointBackend worker -l info --concurrency=4
     env_file:
@@ -143,6 +144,7 @@ services:
     build:
       context: ./homepointBackend
       dockerfile: Dockerfile
+    image: homepoint-backend:prod
     container_name: homepoint-celery-beat
     command: celery -A homepointBackend beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file:
