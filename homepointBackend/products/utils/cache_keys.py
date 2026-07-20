@@ -52,16 +52,16 @@ def safe_delete_pattern(pattern):
             cache.delete_pattern(pattern)
             return
         except Exception as e:
-            logger.error("Error using delete_pattern for %s: %s", pattern, e)
+            logger.exception("Error using delete_pattern for %s: %s", pattern, e)
             
     # Fallback for LocMemCache (used in tests) or other backends
     if hasattr(cache, '_cache'):
         # LocMemCache stores its keys in cache._cache
         try:
-            keys_to_delete = list([
+            keys_to_delete = list(
                 key for key in cache._cache.keys()
                 if fnmatch.fnmatch(key, pattern)
-            ])
+            )
             for key in keys_to_delete:
                 if key in cache._cache:
                     del cache._cache[key]

@@ -29,9 +29,10 @@
           accept=".xlsx"
           @change="onFileSelected"
           class="hidden"
+          id="fileInput"
         />
 
-        <div @click="$refs.fileInput.click()" class="cursor-pointer" role="button" tabindex="0" @keydown.enter.space.prevent="$refs.fileInput.click()">
+        <button type="button" @click="$refs.fileInput.click()" class="cursor-pointer w-full text-center" tabindex="0" @keydown.enter.space.prevent="$refs.fileInput.click()">
           <i class="pi pi-cloud-upload text-4xl text-blue-500 mb-3 block"></i>
           <p class="text-lg font-semibold text-gray-800 mb-2">
             Click to upload or drag and drop
@@ -39,7 +40,7 @@
           <p class="text-sm text-gray-600">
             Excel files (.xlsx) up to 10 MB
           </p>
-        </div>
+        </button>
 
         <!-- Selected File Info -->
         <div v-if="selectedFile" class="mt-4 pt-4 border-t border-gray-300">
@@ -63,7 +64,7 @@
 
       <!-- Upload Button -->
       <div class="mt-6 flex gap-3">
-        <button
+        <button type="button"
           v-if="selectedFile"
           @click="uploadFile"
           :disabled="isUploading"
@@ -73,7 +74,7 @@
           <i v-else class="pi pi-spin pi-spinner"></i>
           {{ isUploading ? 'Uploading...' : 'Upload File' }}
         </button>
-        <button
+        <button type="button"
           v-if="selectedFile"
           @click="clearSelection"
           class="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
@@ -93,9 +94,12 @@
         </p>
         
         <!-- Progress Info -->
-        <div v-if="taskStatus" class="mt-4 text-sm text-gray-700">
+        <div v-if="taskStatus" class="mt-4 text-sm text-gray-700 flex flex-col items-center">
           <p>Status: <span class="font-semibold">{{ taskStatus.status }}</span></p>
-          <p class="text-xs text-gray-500 mt-2">Task ID: {{ taskStatus.task_id }}</p>
+          <p class="text-xs text-gray-500 mt-2 mb-4">Task ID: {{ taskStatus.task_id }}</p>
+          <button type="button" @click="stopProcess" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            Stop Process
+          </button>
         </div>
       </div>
     </div>
@@ -110,7 +114,7 @@
             <p class="text-sm text-green-700 mb-4">
               Your products, variants, and inventory have been imported into the system.
             </p>
-            <button
+            <button type="button"
               @click="reset"
               class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
             >
@@ -131,7 +135,7 @@
             <p class="text-sm text-red-700 mb-2 font-mono bg-red-100 p-3 rounded break-words">
               {{ taskError }}
             </p>
-            <button
+            <button type="button"
               @click="reset"
               class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
             >
@@ -267,6 +271,16 @@ const pollTaskStatus = async () => {
       console.error('Polling error:', err)
     }
   }
+}
+
+const stopProcess = () => {
+  if (pollCancel.value) {
+    pollCancel.value()
+    pollCancel.value = null
+  }
+  isProcessing.value = false
+  taskCompleted.value = true
+  taskError.value = 'Process stopped by user.'
 }
 
 const reset = () => {

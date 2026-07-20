@@ -149,7 +149,7 @@ def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
-def parse_bool(val, default=True):
+def parse_bool(val):
     if isinstance(val, bool):
         return val
     return str(val or "true").strip().lower() not in ("false", "0", "no")
@@ -162,7 +162,8 @@ def convert(xlsx_path: Path) -> dict:
     Converts XLSX file at xlsx_path to manifest dict matching the expected seed format.
     Handles all sheets: Categories, Products, Variants, Inventory.
     """
-    with openpyxl.load_workbook(xlsx_path, data_only=True) as wb:
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    try:
         missing = {"Categories", "Products", "Variants", "Inventory"} - set(wb.sheetnames)
         if missing:
             raise ValueError(f"Missing sheets: {', '.join(missing)}")
@@ -171,6 +172,8 @@ def convert(xlsx_path: Path) -> dict:
         raw_prods = read_sheet(wb["Products"])
         raw_vars = read_sheet(wb["Variants"])
         raw_inv = read_sheet(wb["Inventory"])
+    finally:
+        wb.close()
 
     # ── categories ────────────────────────────────────────────────────────────
     categories = []

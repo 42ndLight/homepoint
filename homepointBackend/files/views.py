@@ -90,7 +90,7 @@ class FileImportView(APIView):
                 status=status.HTTP_202_ACCEPTED
             )
 
-        except Exception as e:
+        except Exception:
             import logging
             logging.getLogger(__name__).exception("Error during file import processing")
             return Response(

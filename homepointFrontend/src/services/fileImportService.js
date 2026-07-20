@@ -51,7 +51,7 @@ class FileImportService {
    * @param {number} maxAttempts - Max poll attempts (default 0 = infinite)
    * @returns {Promise<{task_id: string, status: string, ...}>}
    */
-  pollTaskUntilComplete(taskId, pollInterval = 3000, maxAttempts = 0) {
+  pollTaskUntilComplete(taskId, pollInterval = 5000, maxAttempts = 0) {
     let attempts = 0
     let timerId = null
     let isCancelled = false
@@ -81,7 +81,8 @@ class FileImportService {
           // Still processing, schedule next poll
           timerId = setTimeout(poll, pollInterval)
         } catch (error) {
-          // Network error during polling, retry
+          // Network error during polling, log and retry
+          console.error('Task polling error:', error)
           timerId = setTimeout(poll, pollInterval)
         }
       }
