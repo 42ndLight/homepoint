@@ -162,16 +162,15 @@ def convert(xlsx_path: Path) -> dict:
     Converts XLSX file at xlsx_path to manifest dict matching the expected seed format.
     Handles all sheets: Categories, Products, Variants, Inventory.
     """
-    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    with openpyxl.load_workbook(xlsx_path, data_only=True) as wb:
+        missing = {"Categories", "Products", "Variants", "Inventory"} - set(wb.sheetnames)
+        if missing:
+            raise ValueError(f"Missing sheets: {', '.join(missing)}")
 
-    missing = {"Categories", "Products", "Variants", "Inventory"} - set(wb.sheetnames)
-    if missing:
-        raise ValueError(f"Missing sheets: {', '.join(missing)}")
-
-    raw_cats = read_sheet(wb["Categories"])
-    raw_prods = read_sheet(wb["Products"])
-    raw_vars = read_sheet(wb["Variants"])
-    raw_inv = read_sheet(wb["Inventory"])
+        raw_cats = read_sheet(wb["Categories"])
+        raw_prods = read_sheet(wb["Products"])
+        raw_vars = read_sheet(wb["Variants"])
+        raw_inv = read_sheet(wb["Inventory"])
 
     # ── categories ────────────────────────────────────────────────────────────
     categories = []
@@ -306,58 +305,66 @@ def process_xlsx_import_task(self, file_path):
     try:
         manifest = convert(Path(file_path))
 
-        # Create/update categories
-        for cat_data in manifest['categories']:
-            Category.objects.update_or_create(
-                id=cat_data['id'],
-                defaults={
-                    'name': cat_data['name'],
-                    'slug': cat_data['slug'],
-                    'description': cat_data.get('description', ''),
-                    'parent_id': cat_data.get('parent_id'),
-                }
-            )
-
-        # Create/update products
-        for prod_data in manifest['products']:
-            Product.objects.update_or_create(
-                id=prod_data['id'],
-                defaults={
-                    'name': prod_data['name'],
-                    'slug': prod_data['slug'],
-                    'description': prod_data.get('description', ''),
-                    'category_id': prod_data['category']['id'],
-                    'base_price': prod_data['base_price'],
-                    'is_active': prod_data['is_active'],
-                }
-            )
-
-            # Create/update variants and inventory
-            for var_data in prod_data.get('variants', []):
-                variant, _ = Variant.objects.update_or_create(
-                    id=var_data['id'],
+        from django.db import transaction
+        with transaction.atomic():
+            # Create/update categories (first pass without parent_id)
+            for cat_data in manifest['categories']:
+                Category.objects.update_or_create(
+                    id=cat_data['id'],
                     defaults={
-                        'product_id': prod_data['id'],
-                        'sku': var_data['sku'],
-                        'price': var_data['price'],
-                        'unit_type': var_data.get('unit_type', 'piece'),
-                        'attributes': var_data.get('attributes', {}),
-                        'stock_threshold': var_data.get('stock_threshold', 10),
-                        'item_code': var_data.get('item_code', ''),
-                        'tax_type': var_data.get('tax_type', 'A'),
+                        'name': cat_data['name'],
+                        'slug': cat_data['slug'],
+                        'description': cat_data.get('description', ''),
+                    }
+                )
+                
+            # Create/update categories (second pass for parent_id)
+            for cat_data in manifest['categories']:
+                if cat_data.get('parent_id') is not None:
+                    Category.objects.filter(id=cat_data['id']).update(
+                        parent_id=cat_data['parent_id']
+                    )
+
+            # Create/update products
+            for prod_data in manifest['products']:
+                Product.objects.update_or_create(
+                    id=prod_data['id'],
+                    defaults={
+                        'name': prod_data['name'],
+                        'slug': prod_data['slug'],
+                        'description': prod_data.get('description', ''),
+                        'category_id': prod_data['category']['id'],
+                        'base_price': prod_data['base_price'],
+                        'is_active': prod_data['is_active'],
                     }
                 )
 
-                # Update inventory
-                inv_data = var_data.get('inv', {})
-                Inventory.objects.update_or_create(
-                    variant=variant,
-                    defaults={
-                        'quantity': inv_data.get('quantity', 0),
-                        'location': inv_data.get('location', ''),
-                        'last_updated': inv_data.get('last_updated', ''),
-                    }
-                )
+                # Create/update variants and inventory
+                for var_data in prod_data.get('variants', []):
+                    variant, _ = Variant.objects.update_or_create(
+                        id=var_data['id'],
+                        defaults={
+                            'product_id': prod_data['id'],
+                            'sku': var_data['sku'],
+                            'price': var_data['price'],
+                            'unit_type': var_data.get('unit_type', 'piece'),
+                            'attributes': var_data.get('attributes', {}),
+                            'stock_threshold': var_data.get('stock_threshold', 10),
+                            'item_code': var_data.get('item_code', ''),
+                            'tax_type': var_data.get('tax_type', 'A'),
+                        }
+                    )
+
+                    # Update inventory
+                    inv_data = var_data.get('inv', {})
+                    Inventory.objects.update_or_create(
+                        variant=variant,
+                        defaults={
+                            'quantity': inv_data.get('quantity', 0),
+                            'location': inv_data.get('location', ''),
+                            'last_updated': inv_data.get('last_updated', ''),
+                        }
+                    )
 
         history.status = 'COMPLETED'
         history.save()

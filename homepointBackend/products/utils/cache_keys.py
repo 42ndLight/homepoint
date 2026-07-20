@@ -15,14 +15,26 @@ def get_category_detail_key(slug):
 
 def get_products_list_key(params, role=None):
     """Generate cache key for products list, optionally including role for isolation."""
-    base = f'products:list:{params.urlencode() if params else "all"}'
+    from urllib.parse import urlencode
+
+    # Define the parameters that actually affect the queryset/response
+    allowed = {'page', 'page_size', 'category', 'search', 'ordering'}
+    filtered = {k: params[k] for k in allowed if k in params}
+    
+    # Sort to ensure consistent keys regardless of query param order
+    query_string = urlencode(sorted(filtered.items()))
+    base = f'products:list:{query_string if query_string else "all"}'
+    
     if role:
         return f"{base}:role:{role}"
     return base
 
-def get_product_detail_key(slug):
+def get_product_detail_key(slug, role=None):
     """Generate cache key for product detail."""
-    return f'product:detail:{slug}'
+    base = f'product:detail:{slug}'
+    if role:
+        return f"{base}:role:{role}"
+    return base
 
 def get_variants_list_key(params):
     """Generate cache key for variants list."""
@@ -46,15 +58,18 @@ def safe_delete_pattern(pattern):
     if hasattr(cache, '_cache'):
         # LocMemCache stores its keys in cache._cache
         try:
-            keys_to_delete = [
+            keys_to_delete = list([
                 key for key in cache._cache.keys()
                 if fnmatch.fnmatch(key, pattern)
-            ]
+            ])
             for key in keys_to_delete:
-                cache.delete(key)
+                if key in cache._cache:
+                    del cache._cache[key]
+                if hasattr(cache, '_expire_info') and key in cache._expire_info:
+                    del cache._expire_info[key]
             return
         except Exception as e:
-            logger.error("Error manually deleting keys matching %s: %s", pattern, e)
+            logger.exception("Error manually deleting keys matching %s: %s", pattern, e)
             
     # Last resort: log instead of clearing entire cache
     logger.warning("Could not safely delete cache pattern %s. Cache clear avoided.", pattern)

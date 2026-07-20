@@ -9,8 +9,9 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
+from products.permissions import IsWarehouseStaff
 from .models import ImportHistory
 from .tasks import process_xlsx_import_task
 
@@ -19,10 +20,14 @@ def handle_file_upload(uploaded_file):
     """
     Save uploaded file to MEDIA_ROOT/uploads/ and return the path.
     """
+    import uuid
     upload_dir = Path(settings.MEDIA_ROOT) / 'uploads'
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    file_path = upload_dir / uploaded_file.name
+    # Generate a unique filename while preserving the original extension
+    ext = os.path.splitext(uploaded_file.name)[1]
+    unique_name = f"{uuid.uuid4()}{ext}"
+    file_path = upload_dir / unique_name
     with open(file_path, 'wb') as f:
         for chunk in uploaded_file.chunks():
             f.write(chunk)
@@ -36,7 +41,7 @@ class FileImportView(APIView):
     Accepts XLSX file upload and triggers async Celery task.
     Returns 202 Accepted with task_id for polling.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated | IsWarehouseStaff]
 
     def post(self, request):
         if 'file' not in request.FILES:
@@ -65,15 +70,17 @@ class FileImportView(APIView):
             # Save file
             file_path = handle_file_upload(uploaded_file)
 
-            # Trigger Celery task
-            task = process_xlsx_import_task.delay(file_path)
-
-            # Create ImportHistory record
+            # Generate task ID and create ImportHistory record first
+            import uuid
+            task_id = str(uuid.uuid4())
             ImportHistory.objects.create(
-                task_id=task.id,
+                task_id=task_id,
                 status='PENDING',
                 file_path=file_path
             )
+
+            # Trigger Celery task using the preassigned ID
+            task = process_xlsx_import_task.apply_async(args=[file_path], task_id=task_id)
 
             return Response(
                 {
@@ -84,8 +91,10 @@ class FileImportView(APIView):
             )
 
         except Exception as e:
+            import logging
+            logging.getLogger(__name__).exception("Error during file import processing")
             return Response(
-                {"error": str(e)},
+                {"error": "An internal server error occurred while processing the upload."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -95,7 +104,7 @@ class TaskStatusView(APIView):
     GET /api/tasks/<task_id>/
     Returns the current status of an import task.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsWarehouseStaff]
 
     def get(self, request, task_id):
         try:

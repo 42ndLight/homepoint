@@ -149,7 +149,8 @@ class ProductViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
     def retrieve(self, request, *args, **kwargs):
         """Cache individual product for 10 minutes."""
         slug = kwargs.get('slug')
-        cache_key = get_product_detail_key(slug)
+        role = get_user_role(request)
+        cache_key = get_product_detail_key(slug, role)
         return self.cached_retrieve(cache_key, 600, request, *args, **kwargs)
 
     def perform_create(self, serializer):

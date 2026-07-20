@@ -13,7 +13,7 @@
     <div v-if="!isProcessing && !taskCompleted" class="mb-6">
       <!-- File Input -->
       <div
-        @drop="onDrop"
+        @drop.prevent="onDrop"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
         :class="[
@@ -31,7 +31,7 @@
           class="hidden"
         />
 
-        <div @click="$refs.fileInput.click()" class="cursor-pointer">
+        <div @click="$refs.fileInput.click()" class="cursor-pointer" role="button" tabindex="0" @keydown.enter.space.prevent="$refs.fileInput.click()">
           <i class="pi pi-cloud-upload text-4xl text-blue-500 mb-3 block"></i>
           <p class="text-lg font-semibold text-gray-800 mb-2">
             Click to upload or drag and drop
@@ -160,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import fileImportService from '@/services/fileImportService'
 
 // State
@@ -173,6 +173,13 @@ const taskCompleted = ref(false)
 const error = ref(null)
 const taskStatus = ref(null)
 const taskError = ref(null)
+const pollCancel = ref(null)
+
+onUnmounted(() => {
+  if (pollCancel.value) {
+    pollCancel.value()
+  }
+})
 
 // Computed
 const taskId = computed(() => taskStatus.value?.task_id)
@@ -239,8 +246,11 @@ const uploadFile = async () => {
 const pollTaskStatus = async () => {
   if (!taskId.value) return
 
+  const polling = fileImportService.pollTaskUntilComplete(taskId.value)
+  pollCancel.value = polling.cancel
+
   try {
-    const status = await fileImportService.getTaskStatus(taskId.value)
+    const status = await polling.promise
     taskStatus.value = status
 
     if (status.status === 'COMPLETED') {
@@ -251,13 +261,11 @@ const pollTaskStatus = async () => {
       isProcessing.value = false
       taskCompleted.value = true
       taskError.value = status.error_msg || 'Import failed for unknown reason'
-    } else {
-      // Still processing, poll again in 3 seconds
-      setTimeout(pollTaskStatus, 3000)
     }
-  } catch {
-    // Network error during polling, retry
-    setTimeout(pollTaskStatus, 3000)
+  } catch (err) {
+    if (err.message !== 'Polling cancelled') {
+      console.error('Polling error:', err)
+    }
   }
 }
 

@@ -51,11 +51,18 @@ class FileImportService {
    * @param {number} maxAttempts - Max poll attempts (default 0 = infinite)
    * @returns {Promise<{task_id: string, status: string, ...}>}
    */
-  async pollTaskUntilComplete(taskId, pollInterval = 3000, maxAttempts = 0) {
+  pollTaskUntilComplete(taskId, pollInterval = 3000, maxAttempts = 0) {
     let attempts = 0
+    let timerId = null
+    let isCancelled = false
 
-    return new Promise((resolve, reject) => {
+    const promise = new Promise((resolve, reject) => {
       const poll = async () => {
+        if (isCancelled) {
+          reject(new Error('Polling cancelled'))
+          return
+        }
+
         try {
           attempts++
 
@@ -72,15 +79,24 @@ class FileImportService {
           }
 
           // Still processing, schedule next poll
-          setTimeout(poll, pollInterval)
+          timerId = setTimeout(poll, pollInterval)
         } catch (error) {
-          reject(error)
+          // Network error during polling, retry
+          timerId = setTimeout(poll, pollInterval)
         }
       }
 
       // Start polling
       poll()
     })
+
+    return {
+      promise,
+      cancel: () => {
+        isCancelled = true
+        if (timerId) clearTimeout(timerId)
+      }
+    }
   }
 
   /**

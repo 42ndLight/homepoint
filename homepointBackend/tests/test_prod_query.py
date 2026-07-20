@@ -43,7 +43,7 @@ class QueryOptimizationTests(TestCase):
         from orders.views import OrderViewSet
         from django.contrib.auth import get_user_model
 
-        usser = get_user_model()
+        User = get_user_model()
         user = User.objects.create_user(username='test', email='test@test.com')
         order = Order.objects.create(
             user=user,
