@@ -10,6 +10,8 @@ from pathlib import Path
 
 import openpyxl
 from celery import shared_task
+from django.core.cache import cache
+from django.db import transaction
 
 from .models import ImportHistory
 from products.models import Category, Product, Variant, Inventory
@@ -309,46 +311,61 @@ def process_xlsx_import_task(self, file_path):
         manifest = convert(Path(file_path))
 
         from django.db import transaction
+        # Counters for reporting
+        created = {'categories':0, 'products':0, 'variants':0, 'inventory':0}
+        updated = {'categories':0, 'products':0, 'variants':0, 'inventory':0}
+
         with transaction.atomic():
-            # Create/update categories (first pass without parent_id)
+            # ── Categories: lookup by name (unique) ──────────────────────────
+            cat_id_map = {}  # sheet id → real DB pk
             for cat_data in manifest['categories']:
-                Category.objects.update_or_create(
-                    id=cat_data['id'],
+                cat_obj, cat_created = Category.objects.update_or_create(
+                    name=cat_data['name'],
                     defaults={
-                        'name': cat_data['name'],
                         'slug': cat_data['slug'],
                         'description': cat_data.get('description', ''),
                     }
                 )
-                
-            # Create/update categories (second pass for parent_id)
+                cat_id_map[cat_data['id']] = cat_obj.pk
+                if cat_created:
+                    created['categories'] += 1
+                else:
+                    updated['categories'] += 1
+
+            # Second pass: resolve parent_id using real DB pks
             for cat_data in manifest['categories']:
                 if cat_data.get('parent_id') is not None:
-                    Category.objects.filter(id=cat_data['id']).update(
-                        parent_id=cat_data['parent_id']
-                    )
+                    real_pk = cat_id_map.get(cat_data['id'])
+                    parent_pk = cat_id_map.get(cat_data['parent_id'])
+                    if real_pk and parent_pk:
+                        Category.objects.filter(pk=real_pk).update(parent_id=parent_pk)
 
-            # Create/update products
+            # ── Products: lookup by slug (unique) ─────────────────────────────
             for prod_data in manifest['products']:
-                Product.objects.update_or_create(
-                    id=prod_data['id'],
+                real_cat_pk = cat_id_map.get(prod_data['category']['id'])
+                if not real_cat_pk:
+                    continue
+                prod_obj, prod_created = Product.objects.update_or_create(
+                    slug=prod_data['slug'],
                     defaults={
                         'name': prod_data['name'],
-                        'slug': prod_data['slug'],
                         'description': prod_data.get('description', ''),
-                        'category_id': prod_data['category']['id'],
+                        'category_id': real_cat_pk,
                         'base_price': prod_data['base_price'],
                         'is_active': prod_data['is_active'],
                     }
                 )
+                if prod_created:
+                    created['products'] += 1
+                else:
+                    updated['products'] += 1
 
-                # Create/update variants and inventory
+                # ── Variants: lookup by sku (unique) ──────────────────────────
                 for var_data in prod_data.get('variants', []):
-                    variant, _ = Variant.objects.update_or_create(
-                        id=var_data['id'],
+                    variant_obj, var_created = Variant.objects.update_or_create(
+                        sku=var_data['sku'],
                         defaults={
-                            'product_id': prod_data['id'],
-                            'sku': var_data['sku'],
+                            'product_id': prod_obj.pk,
                             'price': var_data['price'],
                             'unit_type': var_data.get('unit_type', 'piece'),
                             'attributes': var_data.get('attributes', {}),
@@ -357,17 +374,38 @@ def process_xlsx_import_task(self, file_path):
                             'tax_type': var_data.get('tax_type', 'A'),
                         }
                     )
+                    if var_created:
+                        created['variants'] += 1
+                    else:
+                        updated['variants'] += 1
 
-                    # Update inventory
+                    # ── Inventory: 1-to-1 with variant ────────────────────────
                     inv_data = var_data.get('inv', {})
-                    Inventory.objects.update_or_create(
-                        variant=variant,
+                    inv_obj, inv_created = Inventory.objects.update_or_create(
+                        variant=variant_obj,
                         defaults={
                             'quantity': inv_data.get('quantity', 0),
                             'location': inv_data.get('location', ''),
-                            'last_updated': inv_data.get('last_updated', ''),
                         }
                     )
+                    if inv_created:
+                        created['inventory'] += 1
+                    else:
+                        updated['inventory'] += 1
+
+        # Attach a concise summary to history (stored in error_msg for now)
+        summary = f"created: {created}, updated: {updated}"
+        history.error_msg = summary
+        history.save()
+
+        # Bust stale caches so the API immediately reflects the imported data
+        from products.utils.cache_keys import invalidate_product_cache, invalidate_category_cache, invalidate_variant_cache
+        invalidate_product_cache()
+        invalidate_category_cache()
+        invalidate_variant_cache()
+        # Also clear the dump endpoint caches (keyed per role)
+        for role in ('admin', 'staff', 'cashier', 'customer'):
+            cache.delete(f'products:dump:role:{role}')
 
         history.status = 'COMPLETED'
         history.save()
