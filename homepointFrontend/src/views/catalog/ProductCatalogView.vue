@@ -1,16 +1,22 @@
 <template>
   <div class="p-4">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">Product Catalog</h1>
-      <Button
-        icon="pi pi-refresh"
-        label="Sync"
-        @click="handleSync"
-        :loading="syncing"
-      />
-    </div>
+    <!-- Top toolbar -->
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-4">
+      <h1 class="text-2xl font-bold whitespace-nowrap">Product Catalog</h1>
 
-    <CategoryFilter v-model="selectedCategory" />
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-center w-full xl:w-auto">
+        <CategoryFilter
+          v-model="selectedCategory"
+          class="w-full sm:w-auto"
+        />
+        <Button
+          icon="pi pi-refresh"
+          label="Sync"
+          @click="handleSync"
+          :loading="syncing"
+        />
+      </div>
+    </div>
 
     <DataView
       v-if="!loading"
@@ -20,9 +26,12 @@
       :rows="12"
       sortField="name"
       :sortOrder="1"
+      paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+      :rowsPerPageOptions="[12, 24, 48]"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
     >
       <template #grid="slotProps">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           <ProductCard
             v-for="product in slotProps.items"
             :key="product.id"
@@ -98,20 +107,23 @@ const handleSync = async () => {
   }
 }
 
-const handleAddToCart = (product) => {
-  if (!product.variants?.length) {
+const handleAddToCart = ({ product, variant }) => {
+  if (!variant) {
     toast.add({ severity: 'info', summary: 'No Variants', detail: 'This product has no sellable variants', life: 2000 })
     return
   }
+  if (variant.stock_status === 'out_of_stock') {
+    toast.add({ severity: 'warn', summary: 'Out of Stock', detail: `${variant.sku} is out of stock`, life: 2000 })
+    return
+  }
 
-  // Find the first in-stock variant to add
-  const variant = product.variants.find(v =>
-    v.stock_status === 'in_stock' || v.stock_status === 'low_stock'
-  ) ?? product.variants[0]
+  cartStore.addItem({
+    ...variant,
+    name: product.name,
+    image: variant.image || product.image,
+  }, 1)
 
-  cartStore.addItem({ ...variant, name: product.name, image: product.image }, 1)
-
-  toast.add({ severity: 'success', summary: 'Added to Cart', detail: `${product.name} added to cart`, life: 2000 })
+  toast.add({ severity: 'success', summary: 'Added to Cart', detail: `${product.name} — ${variant.sku}`, life: 2000 })
 }
 
 onMounted(async () => {

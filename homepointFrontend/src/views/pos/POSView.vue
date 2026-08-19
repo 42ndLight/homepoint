@@ -1,34 +1,38 @@
 <template>
-  <div class="pos-layout flex h-[calc(100vh-8rem)] gap-4 p-4">
+  <div class="pos-layout flex flex-col lg:flex-row h-[calc(100vh-5rem)] min-h-0 gap-4 p-4">
     <!-- Left: Product search & grid -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <div class="flex justify-between items-center mb-4 gap-4">
-        <h1 class="text-2xl font-bold">Point of Sale</h1>
-        <div class="flex gap-2">
+    <div class="flex-1 flex flex-col min-w-0 min-h-0">
+      <!-- Header: title + controls -->
+      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-4 shrink-0">
+        <h1 class="text-2xl font-bold whitespace-nowrap">Point of Sale</h1>
+
+        <div class="flex flex-col sm:flex-row gap-2 sm:items-center w-full xl:w-auto">
           <ProductSearch
-            class="flex-1 min-w-[280px]"
+            class="w-full sm:min-w-[260px] sm:max-w-md"
             @select="handleProductSelected"
           />
-          <Button
-            icon="pi pi-refresh"
-            label="Sync"
-            @click="handleSync"
-            :loading="syncing"
-            outlined
-          />
-          <Button
-            icon="pi pi-barcode"
-            label="Scan"
-            @click="showScanner = true"
-            outlined
-          />
+          <div class="flex gap-2 shrink-0">
+            <Button
+              icon="pi pi-refresh"
+              label="Sync"
+              @click="handleSync"
+              :loading="syncing"
+              outlined
+            />
+            <Button
+              icon="pi pi-barcode"
+              label="Scan"
+              @click="showScanner = true"
+              outlined
+            />
+          </div>
         </div>
       </div>
 
-      <div class="flex-1 overflow-auto">
+      <div class="flex-1 overflow-auto min-h-0">
         <DataView v-if="!loading" :value="sellableItems" layout="grid">
           <template #grid="slotProps">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
               <PosItemCard
                 v-for="item in slotProps.items"
                 :key="item.id"
@@ -53,7 +57,7 @@
     </div>
 
     <!-- Right: Cart panel & Orders -->
-    <div class="w-96 flex-shrink-0 flex flex-col gap-3">
+    <div class="w-full lg:w-96 xl:w-[420px] flex-shrink-0 flex flex-col gap-3 min-h-0">
       <div class="flex-1 min-h-0">
         <CartPanel
           @checkout="handleCheckout"
@@ -65,7 +69,7 @@
         icon="pi pi-receipt"
         severity="secondary"
         outlined
-        class="relative w-full py-4 bg-white font-semibold"
+        class="relative w-full py-3 bg-white font-semibold shrink-0"
         @click="showOrdersSidebar = true"
       >
         <Badge

@@ -174,6 +174,37 @@ class ProductViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
         cache.delete(get_product_detail_key(slug))
         invalidate_category_cache()
 
+    @action(detail=False, methods=['get'], url_path='dump',
+            permission_classes=[IsAuthenticated])
+    def dump(self, request):
+        """
+        GET /products/products/dump/
+        Returns every active product with all variants and inventory — no pagination.
+        Intended for the offline sync service and full catalog refresh.
+        Cached for 5 minutes per role; busted on any import or product write.
+        """
+        role = get_user_role(request)
+        cache_key = f'products:dump:role:{role}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        variant_prefetch = Prefetch(
+            'variants',
+            Variant.objects.prefetch_related('inventory', 'images')
+        )
+        queryset = (
+            Product.objects
+            .filter(is_active=True)
+            .prefetch_related(variant_prefetch, 'images')
+            .select_related('category')
+            .order_by('id')
+        )
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        cache.set(cache_key, data, 300)
+        return Response(data)
+
 
 class VariantViewSet(CachedListRetrieveMixin, FullCRUDViewSet):
     serializer_class = VariantSerializer
