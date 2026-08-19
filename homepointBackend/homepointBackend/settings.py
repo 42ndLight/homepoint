@@ -164,8 +164,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',  # We override per-view
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,  # Mobile-friendly
+    'DEFAULT_PAGINATION_CLASS': 'homepointBackend.pagination.FlexiblePageNumberPagination',
+    'PAGE_SIZE': 50,  # Mobile-friendly default; clients can request up to 200 via ?page_size=
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle'
