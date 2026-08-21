@@ -92,7 +92,7 @@
         <p class="text-sm text-gray-600">
           Please wait while we import your data. Do not close this window.
         </p>
-        
+
         <!-- Progress Info -->
         <div v-if="taskStatus" class="mt-4 text-sm text-gray-700 flex flex-col items-center">
           <p>Status: <span class="font-semibold">{{ taskStatus.status }}</span></p>
@@ -166,6 +166,7 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import fileImportService from '@/services/fileImportService'
+import { syncAll } from '@/services/syncService'
 
 // State
 const fileInput = ref(null)
@@ -206,7 +207,7 @@ const onDrop = (event) => {
 
 const selectFile = (file) => {
   error.value = null
-  
+
   // Validate file
   const validation = fileImportService.validateFile(file)
   if (!validation.valid) {
@@ -258,6 +259,12 @@ const pollTaskStatus = async () => {
     taskStatus.value = status
 
     if (status.status === 'COMPLETED') {
+      try {
+        await syncAll()   // pull fresh data from /products/products/dump/ into Dexie
+      } catch (syncErr) {
+        console.error('Post-import sync failed:', syncErr)
+    // Optional: show a non-blocking warning that local data may be stale
+      }
       isProcessing.value = false
       taskCompleted.value = true
       taskError.value = null

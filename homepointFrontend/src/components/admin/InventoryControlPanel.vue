@@ -307,7 +307,7 @@
           </div>
 
           <div>
-            <label for="update-notes" class="block text-sm font-semibold text-gray-700 mb-2">Notes(Mandatory))</label>
+            <label for="update-notes" class="block text-sm font-semibold text-gray-700 mb-2">Notes (Optional)</label>
             <textarea
               id="update-notes"
               v-model="updateNotes"
