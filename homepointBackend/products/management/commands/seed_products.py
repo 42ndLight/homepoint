@@ -54,9 +54,23 @@ class Command(BaseCommand):
     def seed_from_local(self, file_path, keep_ids):
         if not file_path:
             file_path = self.find_local_manifest()
-        
+        else:
+            # If user provided a path, check it directly first
+            if not os.path.exists(file_path):
+                 # Fallback: maybe they provided just the filename and it's in a subfolder
+                 found = self.find_local_manifest(search_path=os.path.dirname(file_path) if os.path.dirname(file_path) else None)
+                 if found and os.path.basename(found) == os.path.basename(file_path):
+                     file_path = found
+
         if not file_path or not os.path.exists(file_path):
-            self.stdout.write(self.style.ERROR(f'Manifest file not found locally.'))
+            self.stdout.write(self.style.ERROR(f'Manifest file not found locally. Searched for: {file_path if file_path else "default manifest patterns"}'))
+            # Print current directory to help debug Docker paths
+            self.stdout.write(f"Current working directory: {os.getcwd()}")
+            self.stdout.write(f"Files in current directory: {os.listdir('.')}")
+            return
+        
+        if os.path.isdir(file_path):
+            self.stdout.write(self.style.ERROR(f"Error: '{file_path}' is a directory, not a file. Please provide the path to the manifest JSON file."))
             return
 
         self.stdout.write(self.style.SUCCESS(f'Seeding from local file: {file_path}...'))
