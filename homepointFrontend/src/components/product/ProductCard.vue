@@ -1,44 +1,59 @@
 <template>
-  <Card class="h-full">
+  <Card class="h-full flex flex-col">
     <template #header>
-      <div class="h-48 bg-gray-200 flex items-center justify-center">
-        <i class="pi pi-image text-4xl text-gray-400" v-if="!product.image"></i>
-        <img v-else :src="product.image" :alt="product.name" class="w-full h-full object-cover" />
+      <div class="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+        <i class="pi pi-image text-4xl text-gray-400" v-if="!activeImage"></i>
+        <img v-else :src="activeImage" :alt="product.name" class="w-full h-full object-cover" />
       </div>
     </template>
 
     <template #title>
-      <div class="text-lg font-semibold">{{ product.name }}</div>
+      <!-- Variant name first, product name secondary -->
+      <div class="leading-tight">
+        <div class="text-base font-bold text-gray-900 truncate">{{ activeVariantLabel }}</div>
+        <div class="text-xs text-gray-500 truncate mt-0.5">{{ product.name }}</div>
+      </div>
     </template>
 
     <template #subtitle>
-      <Tag :value="categoryName" severity="info" />
+      <div class="flex items-center gap-2 flex-wrap mt-1">
+        <Tag :value="categoryName" severity="info" />
+        <Tag :value="stockTag.label" :severity="stockTag.severity" />
+      </div>
     </template>
 
     <template #content>
-      <div class="space-y-2">
-        <p class="text-sm text-gray-600 line-clamp-2">{{ product.description }}</p>
+      <div class="space-y-3">
+        <!-- Active variant price -->
+        <div class="text-xl font-bold text-primary">
+          KES {{ formatPrice(activeVariant?.price ?? product.base_price) }}
+          <span class="text-xs font-normal text-gray-500 ml-1">/ {{ activeVariant?.unit_type_display ?? 'unit' }}</span>
+        </div>
 
-        <!-- Price range across variants, or base_price fallback -->
-        <div v-if="product.variants?.length">
-          <div class="text-sm text-gray-500">Price Range:</div>
-          <div class="text-lg font-bold text-primary">
-            <template v-if="minPrice === maxPrice">
-              KES {{ formatPrice(minPrice) }}
-            </template>
-            <template v-else>
-              KES {{ formatPrice(minPrice) }} – KES {{ formatPrice(maxPrice) }}
-            </template>
+        <!-- Variant selector — show all variants as chips -->
+        <div v-if="product.variants?.length > 1">
+          <div class="text-xs text-gray-500 mb-1">Variants ({{ product.variants.length }})</div>
+          <div class="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+            <button
+              v-for="v in product.variants"
+              :key="v.id"
+              @click.stop="selectedVariantId = v.id"
+              :class="[
+                'px-2 py-0.5 rounded text-xs border transition-colors',
+                v.id === selectedVariantId
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-primary',
+                v.stock_status === 'out_of_stock' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+              ]"
+              :disabled="v.stock_status === 'out_of_stock'"
+              :title="variantLabel(v)"
+            >
+              {{ variantChipLabel(v) }}
+            </button>
           </div>
         </div>
-        <div v-else class="text-lg font-bold text-primary">
-          KES {{ formatPrice(product.base_price) }}
-        </div>
 
-        <!-- Stock status — reads stock_status label (always present) -->
-        <div class="mt-2">
-          <Tag :value="stockTag.label" :severity="stockTag.severity" />
-        </div>
+        <p class="text-xs text-gray-500 line-clamp-2">{{ product.description }}</p>
       </div>
     </template>
 
@@ -47,15 +62,15 @@
         label="Add to Cart"
         icon="pi pi-shopping-cart"
         class="w-full"
-        :disabled="overallStockStatus === 'out_of_stock'"
-        @click="$emit('add-to-cart', product)"
+        :disabled="activeVariant?.stock_status === 'out_of_stock'"
+        @click="$emit('add-to-cart', { product, variant: activeVariant })"
       />
     </template>
   </Card>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Card   from 'primevue/card'
 import Tag    from 'primevue/tag'
 import Button from 'primevue/button'
@@ -63,16 +78,60 @@ import Button from 'primevue/button'
 const props = defineProps({
   product: { type: Object, required: true },
 })
-const categoryName = computed(() => {
-  return props.product.category_detail?.name ?? 'Uncategorized'         
-})
 
 defineEmits(['add-to-cart'])
 
-// ---------------------------------------------------------------------------
-// Price
-// ---------------------------------------------------------------------------
+// ── Variant selection ────────────────────────────────────────────────────────
+// Default to first in-stock variant, fall back to first overall
+const defaultVariant = computed(() => {
+  const variants = props.product.variants ?? []
+  return (
+    variants.find(v => v.stock_status === 'in_stock') ??
+    variants.find(v => v.stock_status === 'low_stock') ??
+    variants[0] ??
+    null
+  )
+})
 
+const selectedVariantId = ref(defaultVariant.value?.id ?? null)
+
+// Reset selection when product changes (e.g. list re-renders)
+watch(() => props.product.id, () => {
+  selectedVariantId.value = defaultVariant.value?.id ?? null
+})
+
+const activeVariant = computed(() =>
+  props.product.variants?.find(v => v.id === selectedVariantId.value) ?? defaultVariant.value
+)
+
+// ── Labels ───────────────────────────────────────────────────────────────────
+const variantLabel = (v) => {
+  const attrs = Object.values(v.attributes ?? {}).join(' • ')
+  return attrs || v.sku
+}
+
+const variantChipLabel = (v) => {
+  // Keep chips short: prefer attribute values, else last part of SKU
+  const attrs = Object.values(v.attributes ?? {})
+  if (attrs.length) return attrs.join(' ')
+  const skuParts = v.sku.split(/[-_\s]/)
+  return skuParts[skuParts.length - 1] || v.sku
+}
+
+const activeVariantLabel = computed(() => {
+  if (!activeVariant.value) return props.product.name
+  return variantLabel(activeVariant.value) || activeVariant.value.sku
+})
+
+const categoryName = computed(() =>
+  props.product.category_detail?.name ?? 'Uncategorized'
+)
+
+const activeImage = computed(() =>
+  activeVariant.value?.image || props.product.image || null
+)
+
+// ── Price ────────────────────────────────────────────────────────────────────
 const formatPrice = (price) => {
   if (price == null || Number.isNaN(price)) return '0.00'
   return Number.parseFloat(price).toLocaleString('en-KE', {
@@ -81,57 +140,14 @@ const formatPrice = (price) => {
   })
 }
 
-const minPrice = computed(() => {
-  if (!props.product.variants?.length) return props.product.base_price
-  return Math.min(...props.product.variants.map(v => Number.parseFloat(v.price ?? 0)))
-})
-
-const maxPrice = computed(() => {
-  if (!props.product.variants?.length) return props.product.base_price
-  return Math.max(...props.product.variants.map(v => Number.parseFloat(v.price ?? 0)))
-})
-
-// ---------------------------------------------------------------------------
-// Stock — backend sends stock_status on every variant for all roles.
-// stock_quantity is only present for staff/admin (null for cashiers).
-//
-// Priority across all variants:
-//   any in_stock  → product is "In Stock"
-//   any low_stock → product is "Low Stock"  (only if none are in_stock)
-//   all out       → product is "Out of Stock"
-// ---------------------------------------------------------------------------
-
-const overallStockStatus = computed(() => {
-  const variants = props.product.variants
-
-  // No variants — fall back gracefully
-  if (!variants?.length) return 'in_stock'
-
-  // Prefer raw quantity when available (staff view)
-  const hasQuantity = variants.some(v => v.stock_quantity != null)
-
-  if (hasQuantity) {
-    const anyInStock  = variants.some(v => (v.stock_quantity ?? 0) > (v.stock_threshold ?? 10))
-    const anyLowStock = variants.some(v => {
-      const qty = v.stock_quantity ?? 0
-      return qty > 0 && qty <= (v.stock_threshold ?? 10)
-    })
-    if (anyInStock)  return 'in_stock'
-    if (anyLowStock) return 'low_stock'
-    return 'out_of_stock'
-  }
-
-  // Cashier path — use server-computed stock_status label
-  if (variants.some(v => v.stock_status === 'in_stock'))  return 'in_stock'
-  if (variants.some(v => v.stock_status === 'low_stock')) return 'low_stock'
-  return 'out_of_stock'
-})
+// ── Stock ────────────────────────────────────────────────────────────────────
+const stockStatus = computed(() => activeVariant.value?.stock_status ?? 'in_stock')
 
 const stockTag = computed(() => {
-  switch (overallStockStatus.value) {
-    case 'in_stock':    return { label: 'In Stock',     severity: 'success' }
-    case 'low_stock':   return { label: 'Low Stock',    severity: 'warn'    }
-    default:            return { label: 'Out of Stock', severity: 'danger'  }
+  switch (stockStatus.value) {
+    case 'in_stock':  return { label: 'In Stock',     severity: 'success' }
+    case 'low_stock': return { label: 'Low Stock',    severity: 'warn'    }
+    default:          return { label: 'Out of Stock', severity: 'danger'  }
   }
 })
 </script>

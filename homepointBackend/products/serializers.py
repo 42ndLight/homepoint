@@ -27,7 +27,7 @@ class InventorySerializer(serializers.ModelSerializer):
     is_low_stock = serializers.ReadOnlyField()
     change_amount = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True)
     movement_type = serializers.ChoiceField(choices=StockMovement.MOVEMENT_TYPES, write_only=True)
-    reason = serializers.CharField(required=False, write_only=True)
+    reason = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = Inventory

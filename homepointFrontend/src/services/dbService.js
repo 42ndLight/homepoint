@@ -15,8 +15,9 @@ import api from '@/services/api'
  */
 export const syncProducts = async () => {
   try {
+    // /dump returns all active products + variants in one shot — no pagination
     const response = await api.get('/products/products/')
-    const productsData = response?.results ?? (Array.isArray(response) ? response : [])
+    const productsData = Array.isArray(response) ? response : (response?.results ?? [])
 
     const products   = []
     const variants   = []

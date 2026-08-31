@@ -1,6 +1,6 @@
 <template>
-  <div class="relative">
-    <span class="p-input-icon-left w-full">
+  <div class="relative w-full">
+    <span class="p-input-icon-left w-full block">
       <i class="pi pi-search" />
       <InputText
         v-model="searchQuery"
@@ -48,22 +48,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import Panel from 'primevue/panel'
 import { useProductSearch } from '@/composables/useProductSearch'
-import { useCartStore } from '@/stores/cart'
-import { useToast } from 'primevue/usetoast'
 import { debounce } from '@/utils/debounce'
 
 const props = defineProps({
   modelValue: String,
 })
+watch(() => props.modelValue, (val) => {
+  if (val !== searchQuery.value) searchQuery.value = val
+})
 
 const emit = defineEmits(['update:modelValue', 'select'])
 
-const cartStore = useCartStore()
-const toast = useToast()
 const { searchQuery, searchResults, loading, initializeSearch, highlightMatch } = useProductSearch()
 
 const showResults = ref(false)
