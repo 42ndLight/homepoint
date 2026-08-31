@@ -37,9 +37,44 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = False
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
+
+# If deploying on Railway, dynamically append the public domain if set
+RAILWAY_PUBLIC_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+if RAILWAY_PUBLIC_DOMAIN:
+    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
+
 NGROK_URL = os.getenv('NGROK_URL')
 
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
+
+# Get env var string (e.g., "https://homepoint-pi.vercel.app")
+CORS_ENV = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+
+# Clean and split into a list
+if CORS_ENV:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ENV.split(",") if origin.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "https://homepoint-pi.vercel.app",
+        "http://localhost:5173",
+    ]
+
+# Explicitly allow Vercel origins
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.vercel\.app$",
+]
+
+# Ensure preflight OPTIONS requests pass without authentication checks
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 
@@ -206,11 +241,17 @@ SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = True
-CSRF_TRUSTED_ORIGINS = [
-    'https://homepoint-api.fly.dev',
-    'https://homepoint-web.fly.dev',
-    # Add custom domains here
-]
+# Fetch the raw string from environment
+raw_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+# Convert comma-separated string into a clean list of origins
+if raw_csrf:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf.split(",") if origin.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        "https://homepoint-pi.vercel.app",
+        "https://*.vercel.app",
+        "https://*.railway.app",
+    ]
 
 # Other security
 SECURE_CONTENT_TYPE_NOSNIFF = True
