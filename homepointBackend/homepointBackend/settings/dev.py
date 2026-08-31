@@ -250,12 +250,6 @@ if USE_AWS:
     }
         
 else:
-    # Fallback for local development
-    STATIC_URL = 'static/'
-    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
-    
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
 
     STORAGES = {
         "default": {

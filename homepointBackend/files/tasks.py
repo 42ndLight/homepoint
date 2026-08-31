@@ -454,3 +454,24 @@ def process_xlsx_import_task(self, file_path):
         history.error_msg = str(exc)
         history.save()
         raise
+
+
+@shared_task
+def keep_neon_alive():
+    """Prevent Neon database from suspending."""
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        logger.info("Neon keep-alive: OK")
+        return {"alive": True}
+    except Exception as e:
+        logger.error(f"Neon keep-alive failed: {e}")
+        return {"alive": False, "error": str(e)}
+
+
+@shared_task
+def scheduled_cleanup():
+    """Example scheduled task - add your cleanup logic."""
+    logger.info("Running scheduled cleanup")
+    return {"cleaned": True}

@@ -13,7 +13,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import ssl
 import dj_database_url
+from urllib.parse import urlparse
 from .base import *
 
 from dotenv import load_dotenv
@@ -32,7 +34,7 @@ load_dotenv()
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG")
+DEBUG = False
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
 NGROK_URL = os.getenv('NGROK_URL')
@@ -188,10 +190,33 @@ SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer',
 }
 
+
+
+# Trust Fly.io proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = True
+USE_X_FORWARDED_HOST = True
+
+# SSL/TLS
+SECURE_SSL_REDIRECT = False #True
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Session cookies
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = [
+    'https://homepoint-api.fly.dev',
+    'https://homepoint-web.fly.dev',
+    # Add custom domains here
+]
+
+# Other security
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -251,12 +276,6 @@ if USE_AWS:
     }
         
 else:
-    # Fallback for local development
-    STATIC_URL = 'static/'
-    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
-    
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
 
     STORAGES = {
         "default": {
@@ -269,6 +288,9 @@ else:
 
 # Cache Configuration
 redis_url = os.environ.get('REDIS_URL')
+parsed = urlparse(redis_url)
+use_tls = parsed.scheme == 'rediss'
+
 if not redis_url and os.environ.get('DB_HOST') == 'db':
     # We are likely running in Docker where the redis container is available
     redis_url = 'redis://redis:6379/1'
@@ -293,14 +315,14 @@ else:
 
 # Celery Configuration
 # Broker/result backend (can be overridden via environment)
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
+CELERY_BROKER_URL = os.environ.get('REDIS_URL')
 # By default keep Redis as result backend for performance, but optionally
 # use the Django DB (django-celery-results) for durable result storage.
 USE_DB_FOR_CELERY_RESULTS = config('USE_DB_FOR_CELERY_RESULTS', default=False, cast=bool)
 if USE_DB_FOR_CELERY_RESULTS:
     CELERY_RESULT_BACKEND = 'django-db'
 else:
-    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://redis:6379/1')
+    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -319,3 +341,43 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 CELERY_RESULT_EXPIRES = int(os.environ.get('CELERY_RESULT_EXPIRES', 60*60*24))
 # Control whether tasks persist results (set False for fire-and-forget tasks)
 CELERY_TASK_IGNORE_RESULT = False
+
+CELERY_BROKER_USE_SSL = {
+    'ssl_cert_reqs': ssl.CERT_NONE,  # Upstash uses self-signed
+    'ssl_ca_certs': None,
+}
+CELERY_REDIS_BACKEND_USE_SSL = CELERY_BROKER_USE_SSL
+
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+CELERY_BEAT_SCHEDULE = {
+    'keep-neon-alive': {
+        'task': 'homepointBackend.files.tasks.keep_neon_alive',
+        'schedule': 300.0,  # Every 5 minutes
+    },
+    # Add your other scheduled tasks here
+}
+
+# Logging
+'''
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            'class': 'pythonjsonlogger.json.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.environ.get('LOG_LEVEL', 'INFO'),
+    },
+}'''
