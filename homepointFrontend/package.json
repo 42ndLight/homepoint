@@ -54,6 +54,7 @@
     "vitest": "^4.0.16"
   },
   "overrides": {
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "vite": "$vite"
   }
 }
