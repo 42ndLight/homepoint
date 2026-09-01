@@ -11,6 +11,7 @@ from pathlib import Path
 
 import openpyxl
 from celery import shared_task
+from django.core.files.storage import default_storage
 from django.core.cache import cache
 from django.db import transaction
 
