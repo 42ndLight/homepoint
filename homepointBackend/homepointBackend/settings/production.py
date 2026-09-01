@@ -383,6 +383,12 @@ CELERY_RESULT_EXPIRES = int(os.environ.get('CELERY_RESULT_EXPIRES', 60*60*24))
 # Control whether tasks persist results (set False for fire-and-forget tasks)
 CELERY_TASK_IGNORE_RESULT = False
 
+CELERY_BROKER_USE_SSL = {
+    'ssl_cert_reqs': ssl.CERT_NONE,  # Upstash uses self-signed
+    'ssl_ca_certs': None,
+}
+CELERY_REDIS_BACKEND_USE_SSL = CELERY_BROKER_USE_SSL
+
 
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
