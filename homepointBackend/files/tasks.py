@@ -346,7 +346,8 @@ def process_xlsx_import_task(self, file_path):
     history.save()
 
     try:
-        manifest = convert(storage_key)
+        # FIX 1: Pass `file_path` instead of the undefined `storage_key`
+        manifest = convert(file_path)
 
         from django.db import transaction
 
@@ -432,12 +433,11 @@ def process_xlsx_import_task(self, file_path):
                     else:
                         updated["inventory"] += 1
 
-        # Attach a concise summary to history (stored in error_msg for now)
+        # Attach summary to history
         summary = f"created: {created}, updated: {updated}"
         history.error_msg = summary
-        history.save()
 
-        # Bust stale caches so the API immediately reflects the imported data
+        # Bust stale caches
         from products.utils.cache_keys import (
             invalidate_category_cache,
             invalidate_product_cache,
@@ -447,7 +447,7 @@ def process_xlsx_import_task(self, file_path):
         invalidate_product_cache()
         invalidate_category_cache()
         invalidate_variant_cache()
-        # Also clear the dump endpoint caches (keyed per role)
+        
         for role in ("admin", "staff", "cashier", "customer"):
             cache.delete(f"products:dump:role:{role}")
 
