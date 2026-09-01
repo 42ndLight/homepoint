@@ -3,6 +3,7 @@ Views for file upload and import status tracking.
 """
 
 import os
+import uuid
 from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -74,7 +75,7 @@ class FileImportView(APIView):
             saved_path = default_storage.save(relative_path, uploaded_file)
 
             # Generate task ID and create ImportHistory record first
-            import uuid
+            
             task_id = str(uuid.uuid4())
             ImportHistory.objects.create(
                 task_id=task_id,
