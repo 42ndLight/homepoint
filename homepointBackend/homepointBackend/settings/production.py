@@ -287,7 +287,8 @@ if USE_AWS:
     AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default=None)
     AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
     CLOUDFRONT_DOMAIN = AWS_S3_CUSTOM_DOMAIN
-    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_QUERYSTRING_AUTH = config('AWS_QUERYSTRING_AUTH', default=True, cast=bool)
     
     # S3 Performance Optimizations
     AWS_S3_OBJECT_PARAMETERS = {
@@ -303,19 +304,30 @@ if USE_AWS:
     MEDIA_LOCATION = 'media'
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/{MEDIA_LOCATION}/'
 
+    S3_OPTIONS = {
+        "access_key": AWS_ACCESS_KEY_ID,
+        "secret_key": AWS_SECRET_ACCESS_KEY,
+        "bucket_name": AWS_STORAGE_BUCKET_NAME,
+        "endpoint_url": AWS_S3_ENDPOINT_URL,
+        "signature_version": AWS_S3_SIGNATURE_VERSION,
+        "region_name": AWS_S3_REGION_NAME,
+        "querystring_auth": AWS_QUERYSTRING_AUTH,
+        "addressing_style": "path",  # Critical for custom S3 compatibility
+    }
+
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
+                **S3_OPTIONS,
                 "location": MEDIA_LOCATION,
-                "endpoint_url": AWS_S3_ENDPOINT_URL
             },
         },
         "staticfiles": {
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
+                **S3_OPTIONS,
                 "location": STATIC_LOCATION,
-                "endpoint_url": AWS_S3_ENDPOINT_URL
             },
         },
     }
