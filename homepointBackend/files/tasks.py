@@ -6,6 +6,7 @@ Includes the refactored xlsx conversion logic from scripts/xlsx_to_json.py
 import json
 import sys
 import time
+import io
 from pathlib import Path
 
 import openpyxl
@@ -179,7 +180,8 @@ def convert(storage_key: str) -> dict:
     Reads file directly from Django default_storage.
     """
     with default_storage.open(storage_key, 'rb') as f:
-        wb = openpyxl.load_workbook(f, data_only=True)
+        file_bytes = f.read()
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
         try:
             missing = {"Categories", "Products", "Variants", "Inventory"} - set(
                 wb.sheetnames
@@ -229,7 +231,7 @@ def convert(storage_key: str) -> dict:
             continue
         raw_qty = row.get("quantity")
         qty = to_int(raw_qty, "Inventory.quantity") or 0
-        
+
         inv_lookup[vid] = {
             "quantity": qty,
             "location": str(row.get("location") or ""),
@@ -344,7 +346,7 @@ def process_xlsx_import_task(self, file_path):
     history.save()
 
     try:
-        manifest = convert(Path(file_path))
+        manifest = convert(storage_key)
 
         from django.db import transaction
 
