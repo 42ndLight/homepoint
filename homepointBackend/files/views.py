@@ -5,6 +5,7 @@ Views for file upload and import status tracking.
 import os
 from pathlib import Path
 from django.conf import settings
+from django.core.files.storage import default_storage
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -68,7 +69,9 @@ class FileImportView(APIView):
 
         try:
             # Save file
-            file_path = handle_file_upload(uploaded_file)
+            ext = os.path.splitext(uploaded_file.name)[1]
+            relative_path = f"uploads/{uuid.uuid4()}{ext}"
+            saved_path = default_storage.save(relative_path, uploaded_file)
 
             # Generate task ID and create ImportHistory record first
             import uuid
@@ -76,11 +79,11 @@ class FileImportView(APIView):
             ImportHistory.objects.create(
                 task_id=task_id,
                 status='PENDING',
-                file_path=file_path
+                file_path=saved_path
             )
 
             # Trigger Celery task using the preassigned ID
-            task = process_xlsx_import_task.apply_async(args=[file_path], task_id=task_id)
+            task = process_xlsx_import_task.apply_async(args=[saved_path], task_id=task_id)
 
             return Response(
                 {

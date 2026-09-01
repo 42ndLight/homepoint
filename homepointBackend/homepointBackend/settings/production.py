@@ -284,8 +284,10 @@ if USE_AWS:
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
     
     # Optional: If using CloudFront to speed up asset delivery, add its URL here
-    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=None)
+    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default=None)
+    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
     CLOUDFRONT_DOMAIN = AWS_S3_CUSTOM_DOMAIN
+    AWS_QUERYSTRING_AUTH = False
     
     # S3 Performance Optimizations
     AWS_S3_OBJECT_PARAMETERS = {
@@ -303,15 +305,17 @@ if USE_AWS:
 
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
                 "location": MEDIA_LOCATION,
+                "endpoint_url": AWS_S3_ENDPOINT_URL
             },
         },
         "staticfiles": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
                 "location": STATIC_LOCATION,
+                "endpoint_url": AWS_S3_ENDPOINT_URL
             },
         },
     }
@@ -363,7 +367,7 @@ USE_DB_FOR_CELERY_RESULTS = config('USE_DB_FOR_CELERY_RESULTS', default=False, c
 if USE_DB_FOR_CELERY_RESULTS:
     CELERY_RESULT_BACKEND = 'django-db'
 else:
-    CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
+    CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -382,13 +386,13 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 CELERY_RESULT_EXPIRES = int(os.environ.get('CELERY_RESULT_EXPIRES', 60*60*24))
 # Control whether tasks persist results (set False for fire-and-forget tasks)
 CELERY_TASK_IGNORE_RESULT = False
-
+'''
 CELERY_BROKER_USE_SSL = {
     'ssl_cert_reqs': ssl.CERT_NONE,  # Upstash uses self-signed
     'ssl_ca_certs': None,
 }
 CELERY_REDIS_BACKEND_USE_SSL = CELERY_BROKER_USE_SSL
-
+'''
 
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 

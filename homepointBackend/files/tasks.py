@@ -172,25 +172,27 @@ def parse_bool(val):
 # ── main conversion ───────────────────────────────────────────────────────────
 
 
-def convert(xlsx_path: Path) -> dict:
+def convert(storage_key: str) -> dict:
     """
     Converts XLSX file at xlsx_path to manifest dict matching the expected seed format.
     Handles all sheets: Categories, Products, Variants, Inventory.
+    Reads file directly from Django default_storage.
     """
-    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
-    try:
-        missing = {"Categories", "Products", "Variants", "Inventory"} - set(
-            wb.sheetnames
-        )
-        if missing:
-            raise ValueError(f"Missing sheets: {', '.join(missing)}")
-
-        raw_cats = read_sheet(wb["Categories"])
-        raw_prods = read_sheet(wb["Products"])
-        raw_vars = read_sheet(wb["Variants"])
-        raw_inv = read_sheet(wb["Inventory"])
-    finally:
-        wb.close()
+    with default_storage.open(storage_key, 'rb') as f:
+        wb = openpyxl.load_workbook(f, data_only=True)
+        try:
+            missing = {"Categories", "Products", "Variants", "Inventory"} - set(
+                wb.sheetnames
+            )
+            if missing:
+                raise ValueError(f"Missing sheets: {', '.join(missing)}")
+    
+            raw_cats = read_sheet(wb["Categories"])
+            raw_prods = read_sheet(wb["Products"])
+            raw_vars = read_sheet(wb["Variants"])
+            raw_inv = read_sheet(wb["Inventory"])
+        finally:
+            wb.close()
 
     # ── categories ────────────────────────────────────────────────────────────
     categories = []
@@ -225,7 +227,9 @@ def convert(xlsx_path: Path) -> dict:
         vid = to_int(row.get("variant_id"), "Inventory.variant_id")
         if vid is None:
             continue
-        qty = int(row.get("quantity") )
+        raw_qty = row.get("quantity")
+        qty = to_int(raw_qty, "Inventory.quantity") or 0
+        
         inv_lookup[vid] = {
             "quantity": qty,
             "location": str(row.get("location") or ""),
