@@ -312,7 +312,7 @@ if USE_AWS:
         "signature_version": AWS_S3_SIGNATURE_VERSION,
         "region_name": AWS_S3_REGION_NAME,
         "querystring_auth": AWS_QUERYSTRING_AUTH,
-        "addressing_style": "path",  # Critical for custom S3 compatibility
+        "addressing_style": "virtual",  # Critical for custom S3 compatibility
     }
 
     STORAGES = {
