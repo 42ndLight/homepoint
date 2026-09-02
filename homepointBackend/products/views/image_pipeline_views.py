@@ -60,6 +60,7 @@ class PresignedUrlGenerationView(UploadPipelineMixin, APIView):
     """
     def post(self, request):
         file_names = request.data.get('filenames', [])
+        content_types = request.data.get('content_types', [])
         model_type, target_id, _, _ = self.resolve_target_context(request.data)
         
         if not target_id or not file_names:
@@ -72,9 +73,10 @@ class PresignedUrlGenerationView(UploadPipelineMixin, APIView):
         presigned_data = []
         timestamp = timezone.now().timestamp()
         
-        for name in file_names:
+        for idx, name in enumerate(file_names):
             # Build an explicit directory layout depending on the model context type
             clean_name = f"raw/{model_type}/{target_id}_{timestamp}_{name}"
+            file_content_type = content_types[idx] if idx < len(content_types) else 'image/jpeg'
             
             try:
                 presigned_url = s3_client.generate_presigned_url(
@@ -82,6 +84,7 @@ class PresignedUrlGenerationView(UploadPipelineMixin, APIView):
                     Params={
                         'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
                         'Key': clean_name,
+                        'ContentType': file_content_type,
                     },
                     ExpiresIn=3600
                 )

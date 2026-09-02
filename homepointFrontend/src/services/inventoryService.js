@@ -99,8 +99,10 @@ class InventoryService {
     try {
       // Step 1: Get presigned URLs
       const filenames = Array.from(files).map(f => f.name)
+      const contentTypes = Array.from(files).map(f => f.type || 'image/jpeg')
       const presignResponse = await api.post('/products/presignurl/', {
         filenames,
+        content_types: contentTypes,
         model_type: modelType,
         target_id: targetId
       })
@@ -119,7 +121,7 @@ class InventoryService {
           method: 'PUT',
           body: file,
           headers: {
-            'Content-Type': file.type
+            'Content-Type': file.type || 'image/jpeg'
           }
         })
 
