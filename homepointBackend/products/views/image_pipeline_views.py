@@ -60,6 +60,9 @@ class ImageUploadView(UploadPipelineMixin, APIView):
         if not model_type:
             return Response({"error": "Invalid model_type. Must be 'product' or 'variant'."}, status=status.HTTP_400_BAD_REQUEST)
 
+        results = []
+        errors = []
+        
         for uploaded_file in uploaded_files:
             try:
                 ext = os.path.splitext(uploaded_file.name)[1]
