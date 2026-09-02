@@ -60,6 +60,13 @@ const router = createRouter({
       meta: { title: 'Receipt' },
     },
     {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/components/UserProfile.vue'),
+      beforeEnter: requireAuth,
+      meta: { title: 'User Profile' },
+    },
+    {
       path: '/',
       name: 'landing',
       component: () => import('@/views/landing/LandingPage.vue'),

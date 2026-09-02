@@ -85,10 +85,7 @@ const userMenuItems = computed(() => {
         {
           label: 'Profile',
           icon: 'pi pi-user',
-          command: () => {
-            // TODO: Navigate to profile page
-            toast.add({ severity: 'info', summary: 'Coming soon', detail: 'Profile page coming soon', life: 3000 })
-          },
+          command: () => router.push('/profile'),
         },
         // Admin-only registration link
         ...(authStore.isAdmin
