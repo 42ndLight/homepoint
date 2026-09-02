@@ -4,10 +4,7 @@ from products.views.product_cat_views import (
     CategoryViewSet, ProductViewSet,
     VariantViewSet, InventoryViewSet
 )
-from products.views.image_pipeline_views import(
-    PresignedUrlGenerationView, 
-    InventoryUploadFinalizeView
-)
+from products.views.image_pipeline_views import ImageUploadView
 
 app_name='products'
 
@@ -19,6 +16,5 @@ router.register(r'inventory', InventoryViewSet, basename='inventory')
 
 
 urlpatterns = [
-    path('presignurl/', PresignedUrlGenerationView.as_view(), name='presignurl'),
-    path('invupload/', InventoryUploadFinalizeView.as_view(), name='invupload')
+    path('upload/', ImageUploadView.as_view(), name='image-upload'),
 ] + router.urls
