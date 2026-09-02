@@ -1,3 +1,4 @@
+import os
 import requests
 import hmac
 import hashlib
@@ -24,6 +25,9 @@ class PaystackClient:
             "Authorization": f"Bearer {self.secret_key}",
             "Content-Type": "application/json",
         }
+        # Support for static IP via proxy (QuotaGuard / Fixie)
+        proxy_url = os.environ.get("QUOTAGUARDSTATIC_URL") or os.environ.get("FIXIE_URL")
+        self.proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
     
     def initialize_transaction(
         self,
@@ -61,7 +65,9 @@ class PaystackClient:
             payload["callback_url"] = callback_url
         
         try:
-            response = requests.post(url, json=payload, headers=self.headers)
+            response = requests.post(
+                url, json=payload, headers=self.headers, proxies=self.proxies
+            )
             # Log raw response for debugging if needed
             # logger.debug(f"Paystack response: {response.text}")
             
@@ -104,7 +110,9 @@ class PaystackClient:
         url = f"{self.BASE_URL}/transaction/verify/{safe_reference}"
         
         try:
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(
+                url, headers=self.headers, proxies=self.proxies
+            )
             if response.status_code >= 400:
                 return {"status": False, "message": response.text}
                 

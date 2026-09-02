@@ -1,3 +1,4 @@
+import os
 import logging
 import requests
 from django.conf import settings
@@ -14,15 +15,19 @@ def get_mpesa_access_token():
         logger.debug("Returning cached M-Pesa access token")
         return token
 
-    consumer_key = settings.MPESA_CONSUMER_KEY
-    consumer_secret = settings.MPESA_CONSUMER_SECRET
-    base_url = settings.MPESA_BASE_URL
+    # Fallback to empty string to avoid "concatenate str (not "NoneType")" error
+    consumer_key = str(settings.MPESA_CONSUMER_KEY or "")
+    consumer_secret = str(settings.MPESA_CONSUMER_SECRET or "")
+    base_url = str(settings.MPESA_BASE_URL or "").rstrip("/")
     api_url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
 
+    # Support for static IP via proxy (QuotaGuard / Fixie)
+    proxy_url = os.environ.get("QUOTAGUARDSTATIC_URL") or os.environ.get("FIXIE_URL")
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+
     try:
-        
         auth = HTTPBasicAuth(consumer_key, consumer_secret)
-        response = requests.get(api_url, auth=auth, timeout=10)
+        response = requests.get(api_url, auth=auth, proxies=proxies, timeout=10)
 
         response.raise_for_status()
 

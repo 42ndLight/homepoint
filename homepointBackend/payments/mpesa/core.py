@@ -1,3 +1,4 @@
+import os
 import requests
 import base64
 from datetime import datetime
@@ -15,10 +16,10 @@ class MpesaExpressClient:
     """
 
     def __init__(self):
-        self.base_url = settings.MPESA_BASE_URL
-        self.shortcode = settings.MPESA_SHORTCODE
+        self.base_url = str(settings.MPESA_BASE_URL or "").rstrip("/")
+        self.shortcode = str(settings.MPESA_SHORTCODE or "")
         # Default passkey for sandbox if not in settings
-        self.passkey = settings.MPESA_PASSKEY
+        self.passkey = str(settings.MPESA_PASSKEY or "")
         # Use NGROK_URL from settings for the callback
         self.callback_url = f"{settings.NGROK_URL}/payments/stk-callback/" if hasattr(settings, 'NGROK_URL') and settings.NGROK_URL else ""
 
@@ -58,9 +59,13 @@ class MpesaExpressClient:
             'Content-Type': 'application/json'
         }
 
+        # Support for static IP via proxy (QuotaGuard / Fixie)
+        proxy_url = os.environ.get("FIXIE_URL")
+        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+
         try:
             logger.info(f"Initiating STK Push for Order #{order_id} to {formatted_phone}")
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response = requests.post(url, json=payload, headers=headers, proxies=proxies, timeout=10)
             return response
         except requests.exceptions.RequestException as e:
             logger.error(f"STK Push request failed for Order #{order_id}: {str(e)}")
