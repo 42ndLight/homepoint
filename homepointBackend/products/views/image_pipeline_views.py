@@ -51,7 +51,7 @@ class ImageUploadView(UploadPipelineMixin, APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        uploaded_file = request.FILES['file']
+        uploaded_files = request.FILES.getlist('file')
         model_type, target_id, ImageModel, fk_field = self.resolve_target_context(request.data)
 
         if not target_id:
@@ -60,38 +60,33 @@ class ImageUploadView(UploadPipelineMixin, APIView):
         if not model_type:
             return Response({"error": "Invalid model_type. Must be 'product' or 'variant'."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            # Generate a unique path for the uploaded image
-            ext = os.path.splitext(uploaded_file.name)[1]
-            relative_path = f"raw/{model_type}/{target_id}_{uuid.uuid4()}{ext}"
-            
-            # Use Django's default storage (which points to S3 if USE_AWS=True)
-            saved_path = default_storage.save(relative_path, uploaded_file)
-            
-            # Get the public URL for the raw image
-            raw_url = default_storage.url(saved_path)
-
-            # Create the database record
-            create_kwargs = {
-                fk_field: target_id,
-                'raw_external_url': raw_url,
-                'optimization_status': 'pending'
-            }
-            img_obj = ImageModel.objects.create(**create_kwargs)
-            
-            # Trigger Celery task
-            task = process_image_optimization_task.delay(img_obj.id, model_type=model_type)
-
-            return Response({
-                "message": f"{model_type.capitalize()} image uploaded successfully.",
-                "url": raw_url,
-                "task_id": task.id
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).exception("Error during image upload")
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        for uploaded_file in uploaded_files:
+            try:
+                ext = os.path.splitext(uploaded_file.name)[1]
+                relative_path = f"raw/{model_type}/{target_id}_{uuid.uuid4()}{ext}"
+                saved_path = default_storage.save(relative_path, uploaded_file)
+                raw_url = default_storage.url(saved_path)
+                create_kwargs = {
+                    fk_field: target_id,
+                    'raw_external_url': raw_url,
+                    'optimization_status': 'pending'
+                }
+                img_obj = ImageModel.objects.create(**create_kwargs)
+                task = process_image_optimization_task.delay(img_obj.id, model_type=model_type)
+                results.append({
+                    "id": img_obj.id,
+                    "url": raw_url,
+                    "task_id": task.id,
+                    "filename": uploaded_file.name
+                })
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).exception(f"Error uploading {uploaded_file.name}")
+                errors.append({"filename": uploaded_file.name, "error": str(e)})
+        if not results:
+            return Response({"error": "All uploads failed", "details": errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            "message": f"{len(results)} {model_type} image(s) uploaded successfully.",
+            "uploaded": results,
+            "errors": errors  # empty if everything succeeded
+        }, status=status.HTTP_201_CREATED if not errors else status.HTTP_207_MULTI_STATUS)

@@ -10,7 +10,8 @@ class APIClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
-    const headers = this.prepareHeaders(options.headers)
+    const isFormData = options.body instanceof FormData
+    const headers = this.prepareHeaders(options.headers, isFormData)
 
     try {
       const response = await this.fetchWithTimeout(url, { ...options, headers })
@@ -25,10 +26,10 @@ class APIClient {
     }
   }
 
-  prepareHeaders(customHeaders = {}) {
+  prepareHeaders(customHeaders = {}, isFormData = false) {
     const token = localStorage.getItem('jwt_token')
     const headers = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...customHeaders,
     }
 
@@ -143,26 +144,29 @@ class APIClient {
   }
 
   post(endpoint, data, options = {}) {
+    const isFormData = data instanceof FormData
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     })
   }
 
   put(endpoint, data, options = {}) {
+    const isFormData = data instanceof FormData
     return this.request(endpoint, {
       ...options,
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     })
   }
 
   patch(endpoint, data, options = {}) {
+    const isFormData = data instanceof FormData
     return this.request(endpoint, {
       ...options,
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     })
   }
 

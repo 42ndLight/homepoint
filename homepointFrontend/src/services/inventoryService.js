@@ -90,56 +90,29 @@ class InventoryService {
   }
 
   /**
-   * Upload images for a product or variant
+   * Upload images for a product or variant using the unified multipart endpoint
    * @param {File[]} files - Array of image files
    * @param {string} modelType - 'product' or 'variant'
-   * @param {number} targetId - The ID of the product or variant
+   * @param {number|string} targetId - The ID of the product or variant
    */
   static async uploadImages(files, modelType, targetId) {
     try {
-      // Step 1: Get presigned URLs
-      const filenames = Array.from(files).map(f => f.name)
-      const contentTypes = Array.from(files).map(f => f.type || 'image/jpeg')
-      const presignResponse = await api.post('/products/presignurl/', {
-        filenames,
-        content_types: contentTypes,
-        model_type: modelType,
-        target_id: targetId
+      const formData = new FormData()
+
+      // 1. Append metadata expected by the unified backend view
+      formData.append('model_type', modelType)
+      formData.append('target_id', targetId)
+
+      // 2. Append all files to the FormData payload
+      // If your backend handles multiple files, append each under the 'file' or 'files' key
+      Array.from(files).forEach((file) => {
+        formData.append('file', file)
       })
 
-      const uploadResults = []
-      const uploadedKeys = []
+      // 3. Send single multipart POST request to the updated endpoint
+      const response = await api.post('/products/upload/', formData)
 
-      // Step 2: Upload files directly to S3
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const presignData = presignResponse.uploads.find(u => u.original_name === file.name)
-        
-        if (!presignData) continue
-
-        const response = await fetch(presignData.upload_url, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type || 'image/jpeg'
-          }
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name} to S3`)
-        }
-
-        uploadedKeys.push(presignData.target_key)
-      }
-
-      // Step 3: Finalize upload on backend
-      const finalizeResponse = await api.post('/products/invupload/', {
-        keys: uploadedKeys,
-        model_type: modelType,
-        target_id: targetId
-      })
-
-      return finalizeResponse
+      return response.data || response
     } catch (error) {
       console.error('Image upload failed:', error)
       throw error
