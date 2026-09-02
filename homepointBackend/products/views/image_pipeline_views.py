@@ -107,6 +107,7 @@ class InventoryUploadFinalizeView(UploadPipelineMixin, APIView):
         created_task_ids = []
         bucket = settings.AWS_STORAGE_BUCKET_NAME
         region = settings.AWS_S3_REGION_NAME
+        bucket_url = settings.AWS_S3_ENDPOINT_URL
 
         for key in uploaded_keys:
             raw_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
