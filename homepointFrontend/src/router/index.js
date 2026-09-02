@@ -15,7 +15,7 @@ const router = createRouter({
       name: 'register',
       component: () => import('@/views/auth/RegisterView.vue'),
       // Only admins should be able to register new staff accounts
-      // beforeEnter: requireRole(['admin']),
+      beforeEnter: requireRole(['admin']),
       meta: { title: 'Register Staff' },
     },
     {
