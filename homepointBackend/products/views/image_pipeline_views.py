@@ -17,12 +17,19 @@ class UploadPipelineMixin:
     and resolving dynamic Product vs Variant targets dynamically.
     """
     def get_s3_client(self):
+        endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None)
+        addressing_style = getattr(settings, 'AWS_S3_ADDRESSING_STYLE', 'virtual')
+
         return boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME,
-            config=Config(signature_version='s3v4')
+            endpoint_url=endpoint_url,
+            config=Config(
+                signature_version='s3v4',
+                s3={'addressing_style': addressing_style}
+                )
         )
 
     def resolve_target_context(self, data):
@@ -107,10 +114,23 @@ class InventoryUploadFinalizeView(UploadPipelineMixin, APIView):
         created_task_ids = []
         bucket = settings.AWS_STORAGE_BUCKET_NAME
         region = settings.AWS_S3_REGION_NAME
-        bucket_url = settings.AWS_S3_ENDPOINT_URL
+        endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None)
+        addressing_style = getattr(settings, 'AWS_S3_ADDRESSING_STYLE', 'virtual')
 
         for key in uploaded_keys:
-            raw_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+            if endpoint_url:
+                # Extract scheme (e.g. 'https://') and base host
+                scheme, host = endpoint_url.split("://")
+                
+                if addressing_style == 'virtual':
+                    # Virtual host format: https://bucket.s3-provider.com/key
+                    raw_url = f"{scheme}://{bucket}.{host.rstrip('/')}/{key}"
+                else:
+                    # Path style format: https://s3-provider.com/bucket/key
+                    raw_url = f"{scheme}://{host.rstrip('/')}/{bucket}/{key}"
+            else:
+                region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+                raw_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
             
             # Use dynamic unpacking to assign either product_id or variant_id
             create_kwargs = {
