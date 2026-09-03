@@ -40,6 +40,8 @@ def process_image_optimization_task(self, image_id, model_type):
     obj.save(update_fields=['optimization_status'])
 
     try:
+        raw_file = obj.image.open('rb')
+
         # Download and run compression 
         optimized_io = optimize_and_resize_external_image(
             external_url=obj.raw_external_url,
@@ -47,47 +49,22 @@ def process_image_optimization_task(self, image_id, model_type):
             quality=78
         )
 
-        # Pipe raw memory data target directly to structural AWS location setup
-        from django.conf import settings
-        from botocore.config import Config
-        
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_S3_REGION_NAME,
-            config=Config(signature_version='s3v4')
-        )
-        target_s3_key = obj.get_s3_key()
-        
-        s3_client.upload_fileobj(
-            Fileobj=optimized_io,
-            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-            Key=target_s3_key,
-            ExtraArgs={
-                'ContentType': 'image/webp',
-                'CacheControl': 'max-age=31536000, public'
-            }
-        )
-
         # Save locally too for dual support
         from django.core.files.base import ContentFile
-        filename = target_s3_key.split('/')[-1]
-        optimized_io.seek(0)
-        obj.local_image.save(filename, ContentFile(optimized_io.read()), save=False)
-
-        # Successful save operations tracking updates execution blocks
-        domain = settings.CLOUDFRONT_DOMAIN or f"{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com"
-        obj.optimized_url = f"https://{domain}/{target_s3_key}"
+        filename = f"{obj.pk}_optimized.webp"
+        obj.optimized_image.save(filename, ContentFile(optimized_io.getvalue()), save=False)
+        
+        # Grab the storage-generated public/S3 URL
+        obj.optimized_url = obj.optimized_image.url
         obj.optimization_status = 'done'
         obj.last_optimized_at = timezone.now()
         obj.error_log = None
-        obj.save(update_fields=['optimized_url', 'local_image', 'optimization_status', 'last_optimized_at', 'error_log'])
+        
+        obj.save(update_fields=['optimized_image', 'optimized_url', 'optimization_status', 'last_optimized_at', 'error_log'])
         
         return f"Successfully optimized image ID: {image_id}"
 
     except Exception as exc:
-        # Fallback tracking verification catch handles logic paths
         if self.request.retries >= self.max_retries:
             obj.optimization_status = 'failed'
             obj.error_log = str(exc)
