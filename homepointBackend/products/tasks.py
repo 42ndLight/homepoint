@@ -7,7 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 import requests
 
 from .models import ProductImage, VariantImage
-from .utils.image import optimize_and_resize_external_image
+from .utils.image import optimize_and_resize_image
 
 @shared_task(
     bind=True,
@@ -43,7 +43,7 @@ def process_image_optimization_task(self, image_id, model_type):
         raw_file = obj.image.open('rb')
 
         # Download and run compression 
-        optimized_io = optimize_and_resize_external_image(
+        optimized_io = optimize_and_resize_image(
             external_url=obj.raw_external_url,
             max_width=800,
             quality=78

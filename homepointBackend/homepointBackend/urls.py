@@ -46,7 +46,7 @@ def health_check(request):
 
 urlpatterns = [
     path('health/', health_check),
-    #path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
     #path('silk/', include('silk.urls', namespace='silk')),
     path('api/', include('files.urls')),
     path('users/', include('users.urls')),
