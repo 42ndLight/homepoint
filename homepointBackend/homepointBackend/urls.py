@@ -46,17 +46,17 @@ def health_check(request):
 
 urlpatterns = [
     path('health/', health_check),
-    path('admin/', admin.site.urls),
-    path('silk/', include('silk.urls', namespace='silk')),
+    #path('admin/', admin.site.urls),
+    #path('silk/', include('silk.urls', namespace='silk')),
     path('api/', include('files.urls')),
     path('users/', include('users.urls')),
     path('products/', include('products.urls')),
     path('orders/', include('orders.urls')),
     path('payments/', include('payments.urls')),
     path('reports/', include('reports.urls')),
-    path('swagger.<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    #path('swagger.<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    #path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    #path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
 if settings.DEBUG:

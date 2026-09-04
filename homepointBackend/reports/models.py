@@ -19,6 +19,7 @@ class Report(models.Model):
         ('PAYMENT_METHOD', 'Payment Method Breakdown'),
         ('CASH_FLOW', 'Cash Flow Statement'),
         ('MPESA_RECONCILIATION', 'M-Pesa Reconciliation'),
+        ('PAYSTACK_RECONCILIATION', 'Paystack Reconciliation'),
         ('ACCOUNT_LEDGER', 'Account Ledger'),
         ('USER_PERFORMANCE', 'User Performance Report'),
         ('PRODUCT_SALES', 'Product Sales Analysis'),

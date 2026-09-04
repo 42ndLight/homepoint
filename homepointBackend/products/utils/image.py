@@ -1,29 +1,29 @@
+# image.py
+
 import io
-import requests
 from PIL import Image
 
-def optimize_and_resize_external_image(external_url: str, max_width: int = 800, quality: int = 75) -> io.BytesIO:
-    # Use standard streaming to ensure safety against giant payload injection attacks
-    with requests.get(external_url, stream=True, timeout=10) as response:
-        response.raise_for_status()
-        
-        # Read content-length metadata check if populated
-        content_length = response.headers.get('Content-Length')
-        if content_length and int(content_length) > 25 * 1024 * 1024: # 25MB Max guardrail
-            raise ValueError("Target download item size footprint breaks system limits.")
-            
-        input_buffer = io.BytesIO(response.content)
+def optimize_and_resize_image(file_obj, max_width: int = 800, quality: int = 78) -> io.BytesIO:
+    """
+    Accepts a file-like object or Django FieldFile stream, resizes it if needed,
+    converts it to WebP, and returns an in-memory BytesIO buffer.
+    """
+    # Reset pointer position in case the file stream was previously read
+    if hasattr(file_obj, 'seek'):
+        file_obj.seek(0)
 
-    with Image.open(input_buffer) as img:
-        # Convert CMYK or RGBA layers gracefully to standard clean RGB format
+    with Image.open(file_obj) as img:
+        # Convert CMYK, Palette, or RGBA layers to standard RGB format
         if img.mode in ("RGBA", "P"):
             background = Image.new("RGB", img.size, (255, 255, 255))
-            background.paste(img, mask=img.convert("RGBA").split()[3]) # alpha channel
+            # Handle transparency mask if available
+            mask = img.convert("RGBA").split()[3] if img.mode == "RGBA" else None
+            background.paste(img, mask=mask)
             img = background
         elif img.mode != "RGB":
             img = img.convert("RGB")
             
-        # Scale handling matching dimensions
+        # Scale handling matching target max width
         width, height = img.size
         if width > max_width:
             aspect_ratio = height / width
