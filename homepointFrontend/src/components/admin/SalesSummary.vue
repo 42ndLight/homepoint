@@ -50,6 +50,10 @@
             <span class="text-sm text-gray-600">Cash:</span>
             <span class="font-semibold text-orange-600">{{ formatCurrency(summary.total_cash) }}</span>
           </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-600">Paystack:</span>
+            <span class="font-semibold text-orange-600">{{ formatCurrency(summary.total_paystack) }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -68,6 +72,7 @@ defineProps({
       average_order_value: '0',
       total_mpesa: '0',
       total_cash: '0',
+      total_paystack: '0',
     }),
   },
 })

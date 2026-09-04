@@ -5,7 +5,7 @@ from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
-from payments.models import CashTransaction, MpesaTransaction
+from payments.models import CashTransaction, MpesaTransaction, PaystackTransaction
 
 
 
@@ -97,14 +97,25 @@ class PeriodGenerator:
                 cash_count=Count('id')
             )
             
+            day_paystack_data = PaystackTransaction.objects.filter(
+                timestamp__gte=day_start,
+                timestamp__lte=day_end,             
+                movement_type='IN',
+            ).distinct().aggregate(
+                paystack_sales=Sum('amount') or Decimal('0'),
+                paystack_count=Count('id')
+            )
+            
             daily_sales.append({
                 'date': current_date.isoformat(),
                 'total': str(day_summary['total']),
                 'count': day_summary['count'],
                 'mpesa_sales': str(day_mpesa_data['mpesa_sales']),
                 'cash_sales': str(day_cash_data['cash_sales']),
+                'paystack_sales': str(day_paystack_data['paystack_sales']),
                 'mpesa_count': day_mpesa_data['mpesa_count'],
                 'cash_count': day_cash_data['cash_count'],
+                'paystack_count': day_paystack_data['paystack_count'],
             })
             
             current_date += timedelta(days=1)
@@ -129,6 +140,16 @@ class PeriodGenerator:
             cash_count=Count('id')
         )
         
+        # Paystack breakdown
+        paystack_data = PaystackTransaction.objects.filter(
+            timestamp__gte=start_date,
+            timestamp__lte=end_date,             
+            movement_type='IN',
+        ).distinct().aggregate(
+            paystack_sales=Sum('amount') or Decimal('0'),
+            paystack_count=Count('id')
+        )
+        
         # Create and save report
         report = Report.objects.create(
             report_type='PERIOD_SALES',
@@ -145,6 +166,7 @@ class PeriodGenerator:
                 'payment_breakdown': {
                     'mpesa': cls._make_serializable(mpesa_data),
                     'cash': cls._make_serializable(cash_data),
+                    'paystack': cls._make_serializable(paystack_data),
                 },
             }
         )

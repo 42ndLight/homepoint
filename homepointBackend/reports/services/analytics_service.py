@@ -75,6 +75,10 @@ class AnalyticsService:
             Decimal(item.get('cash_sales', 0)) 
             for item in daily_data
         )
+        total_paystack = sum(
+            Decimal(item.get('paystack_sales', 0)) 
+            for item in daily_data
+        )
 
         avg_order_value = (
             total_revenue / total_orders 
@@ -88,6 +92,7 @@ class AnalyticsService:
             'average_order_value': str(avg_order_value.quantize(Decimal('0.01'))),
             'total_mpesa': str(total_mpesa),
             'total_cash': str(total_cash),
+            'total_paystack': str(total_paystack),
         }
 
     @staticmethod
