@@ -39,7 +39,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         elif value.startswith('254'):
             value = '+' + value
         elif not value.startswith('+254'):
-            raise serializers.ValidationError("Invalid Kenyan phone number format.")
+            raise serializers.ValidationError("Invalid Phone number format.")
         
         if User.objects.filter(phone_number=value).exists():
             raise serializers.ValidationError("Phone number already registered.")
@@ -66,7 +66,24 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class PasswordResetSerializer(serializers.ModelSerializer):
+    phone_number = serializers.CharField(required=True) 
 
+    def validate_phone_number(self, value):
+        value = value.strip()
+        if value.startswith('0'):
+            value = '+254' + value[1:]
+        elif value.startswith('254'):
+            value = '+' + value
+        elif not value.startswith('+254'):
+            raise serializers.ValidationError("Invalid Phone number format.")
+        
+        if User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("Phone number already registered.")
+        
+        validator = RegexValidator(r'^\+254\d{9}$', 'Invalid format after normalization.')
+        validator(value)
+        return value
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """For retrieving current user + role-specific profile"""

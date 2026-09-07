@@ -25,3 +25,6 @@ class IsWarehouseStaff(BasePermission):
             return user.groups.filter(name="Warehouse Staff").exists()
         return False
 
+class IsAdminRole(BasePermission):
+    def has_permission(self, request, view=None):
+        return bool(request.user and request.user.is_authenticated and getattr(request.user, "role", None) == 'admin')

@@ -6,9 +6,10 @@ from django.db.models import F
 from .models import Order, OrderItem
 from django.db.models import Prefetch
 from .serializers import OrderCreateSerializer, OrderDetailSerializer
+from users.permissions import IsWarehouseStaff
 
 class OrderViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Allow guest checkout via phone
+    permission_classes = [IsAuthenticatedOrReadOnly | IsWarehouseStaff ]  # Allow guest checkout via phone
 
     def get_queryset(self):
         queryset = Order.objects.select_related(
