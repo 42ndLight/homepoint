@@ -6,6 +6,40 @@ import api from '@/services/api'
 // Sync  — one API call instead of four
 // ---------------------------------------------------------------------------
 
+const imageDate = (image) =>
+  Date.parse(image.last_optimized_at || image.created_at || '') || 0
+
+const resolveImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return null
+  if (/^(https?:|data:|blob:)/.test(url)) return url
+  if (typeof window === 'undefined') return url
+
+  const apiOrigin = new URL(api.baseURL || '/', window.location.origin)
+  return new URL(url, apiOrigin).href
+}
+
+const imageUrl = (image) =>
+  resolveImageUrl(
+    image?.optimized_url || image?.local_image || image?.raw_external_url
+  )
+
+const prepareImages = (images) =>
+  (Array.isArray(images) ? images : [])
+    .map((image) => ({ ...image, url: imageUrl(image) }))
+    .filter((image) => image.url)
+
+const latestImageUrl = (images) => {
+  const sortedImages = [...images].sort((left, right) => {
+    const dateDifference = imageDate(right) - imageDate(left)
+    return dateDifference || (right.id ?? 0) - (left.id ?? 0)
+  })
+  const completedImage = sortedImages.find(
+    (image) => image.optimization_status === 'done'
+  )
+
+  return (completedImage || sortedImages[0])?.url ?? null
+}
+
 /**
  * Pulls everything from /products/products/ in a single request.
  * The backend already nests category + variants, and strips secret fields
@@ -24,6 +58,7 @@ export const syncProducts = async () => {
     const categories = new Map()  // deduplicate by id
 
     for (const prod of productsData) {
+      const productImages = prepareImages(prod.images)
       const cat = prod.category_detail
       if (cat) {
         categories.set(cat.id, {
@@ -42,18 +77,21 @@ export const syncProducts = async () => {
         description: prod.description ?? '',
         base_price:  prod.base_price,
         is_active:   prod.is_active,
-        image:       prod.images?.length > 0 ? prod.images[0].image : null,
+        images:      productImages,
+        image:       latestImageUrl(productImages),
         category_id: prod.category || null,
       })
 
       for (const v of (prod.variants ?? [])) {
+        const variantImages = prepareImages(v.images)
         variants.push({
           id:               v.id,
           product_id:       prod.id,
           sku:              v.sku,
           item_code:        v.item_code ?? v.sku,
           price:            Number.parseFloat(v.price ?? 0),
-          image:            v.images?.length > 0 ? v.images[0].image : null,
+          images:           variantImages,
+          image:            latestImageUrl(variantImages),
 
           // Staff-only fields — null when stripped by backend
           cost_price:       v.cost_price      != null ? Number.parseFloat(v.cost_price) : null,

@@ -22,6 +22,11 @@ RUN echo 'server { \
         index index.html; \
         try_files $uri $uri/ /index.html; \
     } \
+    location /media/ { \
+        alias /app/media/; \
+        expires 30d; \
+        add_header Cache-Control "public, no-transform"; \
+    } \
 }' > /etc/nginx/conf.d/default.conf
 
 # Copy and setup entrypoint

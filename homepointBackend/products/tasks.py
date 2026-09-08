@@ -37,9 +37,18 @@ def process_image_optimization_task(self, image_id, model_type):
     obj.save(update_fields=['optimization_status'])
 
     try:
-        # 1. Download & optimize via external URL directly
+        # Prefer a directly accessible stored file before falling back to its URL.
+        if obj.local_image and obj.local_image.name:
+            image_source = obj.local_image
+        elif obj.raw_external_url:
+            image_source = obj.raw_external_url
+        else:
+            raise ValueError(
+                f"No local image or external URL found for image record {image_id}."
+            )
+
         optimized_io = optimize_and_resize_image(
-            external_url=obj.raw_external_url,
+            image_source=image_source,
             max_width=800,
             quality=78
         )
@@ -55,6 +64,13 @@ def process_image_optimization_task(self, image_id, model_type):
         obj.error_log = None
         
         obj.save(update_fields=['local_image', 'optimized_url', 'optimization_status', 'last_optimized_at', 'error_log'])
+
+        import os
+        from django.conf import settings
+
+        # After obj.save()
+        absolute_path = os.path.join(settings.MEDIA_ROOT, obj.local_image.name)
+        print(f"[DEBUG] File written to disk: {absolute_path} | Exists: {os.path.exists(absolute_path)}")
         
         return f"Successfully optimized image ID: {image_id}"
 

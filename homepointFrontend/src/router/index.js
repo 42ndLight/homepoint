@@ -21,9 +21,23 @@ const router = createRouter({
     {
       path: '/reset-password',
       name: 'reset-password',
-      component: () => import('@/views/auth/PasswordResetView.vue'),
+      component: () => import('@/views/auth/PasswordResetRequestView.vue'),
       beforeEnter: guestOnly,
       meta: { title: 'Reset Password' },
+    },
+    {
+      path: '/reset-password/verify',
+      name: 'reset-password-verify',
+      component: () => import('@/views/auth/PasswordResetVerifyView.vue'),
+      beforeEnter: guestOnly,
+      meta: { title: 'Verify Code' },
+    },
+    {
+      path: '/reset-password/confirm',
+      name: 'reset-password-confirm',
+      component: () => import('@/views/auth/PasswordResetView.vue'),
+      beforeEnter: guestOnly,
+      meta: { title: 'Set New Password' },
     },
     {
       path: '/privacy',

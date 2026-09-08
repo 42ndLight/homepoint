@@ -40,14 +40,8 @@
           <p class="text-sm text-gray-600 text-center mb-4">
             An OTP has been sent to {{ phoneNumber }}
           </p>
-          <div>
-            <span class="block text-sm font-medium text-center mb-1">OTP Code
-            <InputText
-              v-model="otp"
-              fluid
-              placeholder="0X0X"
-              @keyup.enter="handleVerifyOtp"
-            /></span>
+          <div class="flex justify-center">
+            <OTPInput @update:otp="handleOtpUpdate" />
           </div>
         </div>
 
@@ -74,6 +68,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import OTPInput from '@/components/OTPInput.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -202,5 +197,10 @@ const handleVerifyOtp = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleOtpUpdate = (otpValue) => {
+  otp.value = otpValue
+  handleVerifyOtp()
 }
 </script>

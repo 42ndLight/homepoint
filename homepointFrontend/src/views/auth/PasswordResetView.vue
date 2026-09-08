@@ -6,35 +6,12 @@
       </template>
       <template #subtitle>
         <p class="text-center text-gray-500 mt-1">
-          {{ step === 1 ? 'Enter your registered phone number' : 'Enter verification code and new password' }}
+          {{ success ? 'All done' : 'Enter your new password' }}
         </p>
       </template>
 
       <template #content>
-        <div v-if="step === 1" class="mt-6 space-y-5">
-          <div>
-            <span class="block text-sm font-medium mb-1">Phone Number
-            <InputText
-              v-model="phoneNumber"
-              fluid
-              placeholder="254XXXXXXXX"
-              @keyup.enter="handleRequestOTP"
-            /></span>
-          </div>
-        </div>
-
-        <div v-else-if="step === 2" class="mt-6 space-y-5">
-          <p class="text-sm text-gray-600 text-center mb-4">
-            An OTP has been sent to {{ phoneNumber }}
-          </p>
-          <div>
-            <span class="block text-sm font-medium mb-1">6-digit OTP
-            <InputText
-              v-model="otp"
-              fluid
-              placeholder="123456"
-            /></span>
-          </div>
+        <div v-if="!success" class="mt-6 space-y-5">
           <div>
             <span class="block text-sm font-medium mb-1">New Password
             <Password
@@ -42,6 +19,18 @@
               fluid
               toggleMask
               :feedback="true"
+              placeholder="••••••••"
+              @keyup.enter="handleResetPassword"
+            /></span>
+          </div>
+
+          <div>
+            <span class="block text-sm font-medium mb-1">Confirm New Password
+            <Password
+              v-model="confirmPassword"
+              fluid
+              toggleMask
+              :feedback="false"
               placeholder="••••••••"
               @keyup.enter="handleResetPassword"
             /></span>
@@ -60,12 +49,8 @@
       </template>
 
       <template #footer>
-        <div v-if="step === 1" class="flex flex-col gap-3">
-          <Button label="Request OTP" class="w-full" :loading="loading" @click="handleRequestOTP" />
-          <Button label="Back to Login" class="w-full" severity="secondary" text @click="router.push('/login')" />
-        </div>
-        <div v-else-if="step === 2" class="flex gap-3">
-          <Button label="Back" severity="secondary" class="w-1/3" @click="step = 1; errorMessage = ''" />
+        <div v-if="!success" class="flex gap-3">
+          <Button label="Back" severity="secondary" class="w-1/3" @click="handleBack" />
           <Button label="Reset Password" class="w-2/3" :loading="loading" @click="handleResetPassword" />
         </div>
         <div v-else class="flex gap-3 mt-4">
@@ -78,7 +63,6 @@
 
 <script setup>
 import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -86,45 +70,36 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getErrorMessage } from '@/utils/errorHandler'
 import config from '@/config/env'
+import { usePasswordResetStore } from '@/stores/passwordReset'
 
-const step = ref(1)
-const phoneNumber = ref('')
-const otp = ref('')
+const router = useRouter()
+const resetStore = usePasswordResetStore()
+
+// This screen only makes sense right after a successful OTP verification —
+// bounce back to the start of the flow if there's no reset grant to use.
+if (!resetStore.resetToken) {
+  router.replace({ name: 'reset-password' })
+}
+
 const newPassword = ref('')
+const confirmPassword = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
-const router = useRouter()
+const success = ref(false)
 
-const handleRequestOTP = async () => {
-  if (!phoneNumber.value) {
-    errorMessage.value = 'Please enter your phone number'
-    return
-  }
-
-  loading.value = true
-  errorMessage.value = ''
-
-  try {
-    const response = await fetch(`${config.API_BASE_URL}/users/auth/password-reset/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: phoneNumber.value }),
-    })
-    
-    // Always move to step 2 to prevent number enumeration
-    step.value = 2
-    otp.value = ''
-    newPassword.value = ''
-  } catch (err) {
-    errorMessage.value = getErrorMessage(err)
-  } finally {
-    loading.value = false
-  }
+const handleBack = () => {
+  resetStore.clear()
+  router.push('/login')
 }
 
 const handleResetPassword = async () => {
-  if (!otp.value || !newPassword.value) {
-    errorMessage.value = 'Please enter both the OTP and new password'
+  if (!newPassword.value || !confirmPassword.value) {
+    errorMessage.value = 'Please enter and confirm your new password'
+    return
+  }
+
+  if (newPassword.value !== confirmPassword.value) {
+    errorMessage.value = 'Passwords do not match'
     return
   }
 
@@ -136,19 +111,34 @@ const handleResetPassword = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        phone_number: phoneNumber.value,
-        otp: otp.value,
-        new_password: newPassword.value
+        reset_token: resetStore.resetToken,
+        new_password: newPassword.value,
+        confirm_password: confirmPassword.value,
       }),
     })
 
     const data = await response.json().catch(() => null)
 
     if (!response.ok) {
+      if (data?.new_password) {
+        const msg = Array.isArray(data.new_password) ? data.new_password.join(' ') : data.new_password
+        throw new Error(msg)
+      }
+      if (data?.confirm_password) {
+        const msg = Array.isArray(data.confirm_password) ? data.confirm_password.join(' ') : data.confirm_password
+        throw new Error(msg)
+      }
+      // An expired/consumed reset grant means the OTP must be verified again.
+      if (typeof data?.error === 'string' && data.error.toLowerCase().includes('expired')) {
+        resetStore.clear()
+        router.replace({ name: 'reset-password' })
+        return
+      }
       throw new Error(data?.error || data?.detail || 'Failed to reset password')
     }
 
-    step.value = 3
+    resetStore.clear()
+    success.value = true
   } catch (err) {
     errorMessage.value = err.message || getErrorMessage(err)
   } finally {

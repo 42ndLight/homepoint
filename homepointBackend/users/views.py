@@ -12,9 +12,14 @@ from .serializers import (
     RegisterSerializer, CustomTokenObtainPairSerializer,
     UserProfileSerializer, UpdateProfileSerializer,
     ChangePasswordSerializer, UserDeleteSerializer,
-    PasswordResetSerializer
+    PasswordResetSerializer, PasswordResetVerifySerializer,
+    PasswordResetConfirmSerializer
 )
-from .utils import generate_and_send_otp
+from .utils import (
+    generate_and_send_otp, OTPCooldownError, RESET_RESEND_COOLDOWN,
+    get_otp_cache_key, get_otp_cooldown_key,
+    create_reset_grant, get_reset_grant_phone, delete_reset_grant
+)
 from .permissions import IsAdminRole
 from django.contrib.auth import get_user_model
 
@@ -99,40 +104,95 @@ class PasswordResetRequestView(APIView):
     serializer_class = PasswordResetSerializer
 
     def post(self, request):
-        phone_number = request.data.get('phone_number')
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        phone_number = serializer.validated_data['phone_number']
         try:
             user = User.objects.get(phone_number=phone_number)
-            generate_and_send_otp(user.phone_number, intent="reset")
-            logger.info(f"Password reset OTP initiated for phone: {phone_number}")
         except User.DoesNotExist:
-            pass # Silently fail
-            
-        return Response({"message": "If the phone number is registered, a password reset OTP was sent."})
+            return Response({"error": "Phone number is not registered."}, status=status.HTTP_404_NOT_FOUND)
 
-class PasswordResetConfirmView(APIView):
+        try:
+            generate_and_send_otp(user.phone_number, intent="reset", cooldown_seconds=RESET_RESEND_COOLDOWN)
+        except OTPCooldownError as exc:
+            return Response({
+                "error": "An OTP was already sent recently. Please wait before requesting another.",
+                "retry_after": exc.remaining_seconds,
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        logger.info(f"Password reset OTP initiated for phone: {phone_number}")
+        return Response({
+            "message": "Password reset OTP sent.",
+            "retry_after": RESET_RESEND_COOLDOWN,
+        })
+
+class PasswordResetVerifyOTPView(APIView):
+    """
+    Verifies the reset OTP only — does not touch the password. On success,
+    issues a short-lived opaque reset_token the frontend uses to set a new
+    password without carrying the phone number or OTP forward.
+    """
     permission_classes = [AllowAny]
+    serializer_class = PasswordResetVerifySerializer
 
     def post(self, request):
-        phone_number = request.data.get('phone_number')
-        provided_otp = request.data.get('otp')
-        new_password = request.data.get('new_password')
-        
-        cache_key = f"reset_otp_{phone_number}"
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phone_number = serializer.validated_data['phone_number']
+        provided_otp = serializer.validated_data['otp']
+
+        cache_key = get_otp_cache_key('reset', phone_number)
         cached_otp = cache.get(cache_key)
-        
+
         if not cached_otp or cached_otp != provided_otp:
             return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
+        # OTP is single-use — consume it immediately so it can't be replayed.
+        cache.delete(cache_key)
+
+        reset_token = create_reset_grant(phone_number)
+        logger.info(f"Password reset OTP verified for phone: {phone_number}")
+        return Response({
+            "message": "OTP verified. You may now set a new password.",
+            "reset_token": reset_token,
+        })
+
+class PasswordResetConfirmView(APIView):
+    """Sets the new password using a reset_token issued by PasswordResetVerifyOTPView."""
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        reset_token = serializer.validated_data['reset_token']
+        new_password = serializer.validated_data['new_password']
+
+        phone_number = get_reset_grant_phone(reset_token)
+        if not phone_number:
+            return Response(
+                {"error": "Reset session has expired. Please verify your OTP again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             user = User.objects.get(phone_number=phone_number)
-            user.set_password(new_password)
-            user.save()
-            
-            cache.delete(cache_key)
-            logger.info(f"User {user.username} successfully reset password via OTP.")
-            return Response({"message": "Password updated successfully."})
         except User.DoesNotExist:
             return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        user.set_password(new_password)
+        user.save()
+
+        # Clean up every cache artifact from this reset session.
+        cache.delete(get_otp_cache_key('reset', phone_number))
+        cache.delete(get_otp_cooldown_key('reset', phone_number))
+        delete_reset_grant(reset_token)
+
+        logger.info(f"User {user.username} successfully reset password via OTP.")
+        return Response({"message": "Password updated successfully."})
 
 class UserProfileView(generics.RetrieveAPIView):
     serializer_class = UserProfileSerializer

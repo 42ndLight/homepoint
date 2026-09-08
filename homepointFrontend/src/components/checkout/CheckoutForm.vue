@@ -313,7 +313,7 @@ const validateForm = () => {
     errors.value.phone = 'Phone number is required'
     valid = false
   } else if (!validatePhone(form.value.phone)) {
-    errors.value.phone = 'Enter a valid Kenyan phone number'
+    errors.value.phone = 'Enter a valid phone number'
     valid = false
   }
 

@@ -4,7 +4,8 @@ from .views import (
     UpdateProfileView, LogoutView, 
     ChangePasswordView, DeleteProfileView,
     LoginInitiateView, LoginVerifyOTPView,
-    PasswordResetRequestView, PasswordResetConfirmView
+    PasswordResetRequestView, PasswordResetVerifyOTPView,
+    PasswordResetConfirmView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -21,5 +22,6 @@ urlpatterns = [
     path('auth/token/', LoginInitiateView.as_view(), name='token_obtain_pair'),
     path('auth/token/verify-otp/', LoginVerifyOTPView.as_view(), name='token_verify_otp'),
     path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('auth/password-reset/verify-otp/', PasswordResetVerifyOTPView.as_view(), name='password_reset_verify_otp'),
     path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 ]
