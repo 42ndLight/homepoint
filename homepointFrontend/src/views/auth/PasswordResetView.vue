@@ -92,14 +92,32 @@ const handleBack = () => {
   router.push('/login')
 }
 
-const handleResetPassword = async () => {
+const validatePasswords = () => {
   if (!newPassword.value || !confirmPassword.value) {
-    errorMessage.value = 'Please enter and confirm your new password'
-    return
+    return 'Please enter and confirm your new password'
   }
-
   if (newPassword.value !== confirmPassword.value) {
-    errorMessage.value = 'Passwords do not match'
+    return 'Passwords do not match'
+  }
+  return null
+}
+
+const getFieldError = (data) => {
+  const fieldError = [data?.new_password, data?.confirm_password].find(Boolean)
+  if (Array.isArray(fieldError)) return fieldError.join(' ')
+  return fieldError
+}
+
+const isExpiredResetGrant = (data) =>
+  typeof data?.error === 'string' && data.error.toLowerCase().includes('expired')
+
+const getResetFailure = (data) =>
+  getFieldError(data) || data?.error || data?.detail || 'Failed to reset password'
+
+const handleResetPassword = async () => {
+  const validationError = validatePasswords()
+  if (validationError) {
+    errorMessage.value = validationError
     return
   }
 
@@ -120,21 +138,13 @@ const handleResetPassword = async () => {
     const data = await response.json().catch(() => null)
 
     if (!response.ok) {
-      if (data?.new_password) {
-        const msg = Array.isArray(data.new_password) ? data.new_password.join(' ') : data.new_password
-        throw new Error(msg)
-      }
-      if (data?.confirm_password) {
-        const msg = Array.isArray(data.confirm_password) ? data.confirm_password.join(' ') : data.confirm_password
-        throw new Error(msg)
-      }
       // An expired/consumed reset grant means the OTP must be verified again.
-      if (typeof data?.error === 'string' && data.error.toLowerCase().includes('expired')) {
+      if (isExpiredResetGrant(data)) {
         resetStore.clear()
         router.replace({ name: 'reset-password' })
         return
       }
-      throw new Error(data?.error || data?.detail || 'Failed to reset password')
+      throw new Error(getResetFailure(data))
     }
 
     resetStore.clear()

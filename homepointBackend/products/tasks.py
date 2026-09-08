@@ -70,7 +70,7 @@ def process_image_optimization_task(self, image_id, model_type):
 
         # After obj.save()
         absolute_path = os.path.join(settings.MEDIA_ROOT, obj.local_image.name)
-        print(f"[DEBUG] File written to disk: {absolute_path} | Exists: {os.path.exists(absolute_path)}")
+        #print(f"[DEBUG] File written to disk: {absolute_path} | Exists: {os.path.exists(absolute_path)}")
         
         return f"Successfully optimized image ID: {image_id}"
 

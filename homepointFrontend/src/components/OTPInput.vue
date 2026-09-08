@@ -1,6 +1,8 @@
 <template>
   <div ref="otpCont" class="flex justify-between w-full mx-auto gap-2">
+    <label for="otpcode"></label>
     <input
+      id="otpcode"
       type="text"
       class="w-12 h-14 border-2 border-gray-300 rounded-lg text-center text-2xl font-bold text-gray-800 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:outline-none transition-all duration-200"
       :class="{ 'animate-bounce-short': digits[ind] !== null }"
@@ -67,7 +69,7 @@ const handleKeyDown = function (event, index) {
     return
   }
 
-  if ((new RegExp('^([0-9])$')).test(event.key)) {
+  if (/^\d$/.test(event.key)) {
     digits[index] = event.key
     if (index !== props.digitCount - 1) {
       (otpCont.value.children)[index + 1].focus()

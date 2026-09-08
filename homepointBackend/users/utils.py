@@ -4,7 +4,6 @@ Utility functions for incidents module.
 
 import logging
 import requests
-import random
 import secrets
 import time
 from django.core.cache import cache
@@ -137,7 +136,7 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
             if remaining > 0:
                 raise OTPCooldownError(remaining)
 
-    otp = str(random.randint(100000, 999999))
+    otp = f"{secrets.randbelow(1_000_000):06d}"
     cache_key = get_otp_cache_key(intent, phone_number)
     ttl = RESET_OTP_TTL if intent == 'reset' else 360
 
@@ -146,8 +145,6 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
     if cooldown_seconds:
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
-    # Never log the OTP value itself.
-    print(f" {phone_number} : otp {otp}")
     logger.info(f"Generated OTP for {phone_number} (intent={intent})")
 
     sender_id = getattr(settings, 'AT_SENDER_ID', None)
