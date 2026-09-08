@@ -347,7 +347,6 @@ def process_xlsx_import_task(self, file_path):
     history.save()
 
     try:
-        # FIX 1: Pass `file_path` instead of the undefined `storage_key`
         manifest = convert(file_path)
 
         from django.db import transaction

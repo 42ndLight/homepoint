@@ -147,6 +147,7 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
     # Never log the OTP value itself.
+    print(f" {phone_number} : otp {otp}")
     logger.info(f"Generated OTP for {phone_number} (intent={intent})")
 
     sender_id = getattr(settings, 'AT_SENDER_ID', None)

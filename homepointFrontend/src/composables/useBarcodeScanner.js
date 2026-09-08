@@ -1,10 +1,10 @@
 import { ref, onUnmounted } from 'vue'
 
-// Dynamic import to avoid AMD/UMD bundling issues with Vite
+// Load the scanner only when the barcode workflow is opened.
 let Quagga = null
 const loadQuagga = async () => {
   if (!Quagga) {
-    const module = await import('quagga')
+    const module = await import('@ericblade/quagga2')
     Quagga = module.default || module
   }
   return Quagga
