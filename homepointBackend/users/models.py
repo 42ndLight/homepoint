@@ -92,6 +92,32 @@ class StaffProfile(models.Model):  # Minimal, for daily activity extensions if n
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
     shift_start = models.TimeField(null=True)  # For logging daily activities
 
+
+class SmsNotification(models.Model):
+    """An outbound SMS tracked by the provider message ID for DLR updates."""
+
+    provider_message_id = models.CharField(max_length=255, unique=True)
+    recipient = models.CharField(max_length=32)
+    intent = models.CharField(max_length=32, null=True, blank=True)
+    status = models.CharField(max_length=64, default='PENDING')
+    network_code = models.CharField(max_length=32, blank=True)
+    failure_reason = models.TextField(blank=True)
+    retry_count = models.PositiveIntegerField(default=0)
+    response_metadata = models.JSONField(default=dict, blank=True)
+    delivery_reported_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['provider_message_id']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f'{self.provider_message_id} ({self.recipient})'
+
+
 # Signal to auto-create profiles
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):

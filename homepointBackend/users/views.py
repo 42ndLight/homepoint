@@ -6,6 +6,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+from django.db import transaction
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 import logging
 
 from .serializers import (
@@ -13,8 +17,9 @@ from .serializers import (
     UserProfileSerializer, UpdateProfileSerializer,
     ChangePasswordSerializer, UserDeleteSerializer,
     PasswordResetSerializer, PasswordResetVerifySerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer, SmsDeliveryReportSerializer
 )
+from .models import SmsNotification
 from .utils import (
     generate_and_send_otp, OTPCooldownError, RESET_RESEND_COOLDOWN,
     get_otp_cache_key, get_otp_cooldown_key,
@@ -25,6 +30,60 @@ from django.contrib.auth import get_user_model
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SmsDeliveryReportCallbackView(APIView):
+    """Accept and apply an Africa's Talking SMS delivery report."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SmsDeliveryReportSerializer(data=request.data)
+        if not serializer.is_valid():
+            logger.warning("Malformed SMS delivery report: %s", serializer.errors)
+            return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
+
+        report = serializer.validated_data
+        try:
+            with transaction.atomic():
+                notification = (
+                    SmsNotification.objects.select_for_update()
+                    .filter(provider_message_id=report['id'])
+                    .first()
+                )
+                if notification is None:
+                    logger.warning(
+                        "SMS delivery report received for unknown provider message ID %s",
+                        report['id'],
+                    )
+                else:
+                    updates = {
+                        'recipient': report['phoneNumber'],
+                        'status': report['status'],
+                    }
+                    if 'networkCode' in report:
+                        updates['network_code'] = report['networkCode']
+                    if 'failureReason' in report:
+                        updates['failure_reason'] = report['failureReason']
+                    if 'retryCount' in report:
+                        updates['retry_count'] = report['retryCount']
+
+                    if any(
+                        getattr(notification, field) != value
+                        for field, value in updates.items()
+                    ):
+                        for field, value in updates.items():
+                            setattr(notification, field, value)
+                        notification.delivery_reported_at = timezone.now()
+                        notification.save()
+        except Exception:
+            logger.exception(
+                "Internal error while processing SMS delivery report for %s", report['id']
+            )
+
+        return Response({'status': 'accepted'}, status=status.HTTP_200_OK)
 
 
 class RegisterView(generics.CreateAPIView):

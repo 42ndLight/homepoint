@@ -9,6 +9,8 @@ import time
 from django.core.cache import cache
 from django.conf import settings
 
+from .models import SmsNotification
+
 logger = logging.getLogger(__name__)
 
 # Reset OTPs stay valid for 6 minutes.
@@ -59,7 +61,12 @@ def delete_reset_grant(token):
     cache.delete(get_reset_grant_key(token))
 
 
-def send_at_sms(phone_number: str, message: str, sender_id: str | None = None) -> bool:
+def send_at_sms(
+    phone_number: str,
+    message: str,
+    sender_id: str | None = None,
+    intent: str | None = None,
+) -> bool:
     """
     Send SMS via Africa's Talking API.
     
@@ -69,6 +76,8 @@ def send_at_sms(phone_number: str, message: str, sender_id: str | None = None) -
         sender_id: Optional registered Africa's Talking short code / sender
             ID used to identify who sent the message. Falls back to the
             provider default when not configured.
+        intent: Optional purpose of the message, such as ``login`` or
+            ``reset``.
     
     Returns:
         True if sent successfully, False otherwise
@@ -105,7 +114,36 @@ def send_at_sms(phone_number: str, message: str, sender_id: str | None = None) -
         resp.raise_for_status()
         data = resp.json()
         
-        if data.get('SMSMessageData', {}).get('Recipients'):
+        recipients = data.get('SMSMessageData', {}).get('Recipients')
+        if recipients:
+            if isinstance(recipients, list):
+                for recipient_data in recipients:
+                    if not isinstance(recipient_data, dict):
+                        logger.warning("Unexpected AT SMS recipient data: %r", recipient_data)
+                        continue
+
+                    provider_message_id = recipient_data.get('messageId') or recipient_data.get('id')
+                    if not provider_message_id:
+                        logger.warning(
+                            "AT SMS response for %s did not include a provider message ID",
+                            phone_number,
+                        )
+                        continue
+
+                    try:
+                        SmsNotification.objects.get_or_create(
+                            provider_message_id=str(provider_message_id),
+                            defaults={
+                                'recipient': recipient_data.get('number', phone_number),
+                                'intent': intent,
+                                'response_metadata': data,
+                            },
+                        )
+                    except Exception:
+                        # Delivery tracking must not alter the established send result contract.
+                        logger.exception(
+                            "Unable to persist AT SMS notification %s", provider_message_id
+                        )
             logger.info(f"SMS sent successfully to {phone_number}")
             return True
         else:
@@ -149,6 +187,6 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
 
     sender_id = getattr(settings, 'AT_SENDER_ID', None)
     message = f"Your HomePoint code is {otp}. Valid for 6 minutes. Dont Share Code With AnyOne"
-    send_at_sms(phone_number, message, sender_id=sender_id)
+    send_at_sms(phone_number, message, sender_id=sender_id, intent=intent)
 
     return True

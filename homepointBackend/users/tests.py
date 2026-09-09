@@ -1,9 +1,16 @@
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.core.cache import cache
+from django.core.management import call_command
 from django.test import TestCase
+from django.urls import reverse
+from django.test.utils import override_settings
+from django.utils import timezone
+from datetime import timedelta
 
-from .utils import generate_and_send_otp, get_otp_cache_key
+from .models import SmsNotification
+from .utils import generate_and_send_otp, get_otp_cache_key, send_at_sms
 
 
 class OTPGenerationTests(TestCase):
@@ -32,4 +39,129 @@ class OTPGenerationTests(TestCase):
 
         self.assertEqual(cache.get(get_otp_cache_key("login", self.phone_number)), "999999")
 
-# Create your tests here.
+
+class AfricaTalkingSmsTests(TestCase):
+    @override_settings(AT_API_KEY='test-key', AT_USERNAME='sandbox')
+    @patch('users.utils.requests.post')
+    def test_send_creates_notification_for_provider_message(self, mock_post):
+        mock_post.return_value.json.return_value = {
+            'SMSMessageData': {
+                'Recipients': [{
+                    'number': '+254712345678',
+                    'messageId': 'ATX-123',
+                    'status': 'Success',
+                }]
+            }
+        }
+
+        self.assertTrue(
+            send_at_sms(
+                '+254712345678',
+                'Your HomePoint code is 123456.',
+                intent='login',
+            )
+        )
+
+        notification = SmsNotification.objects.get(provider_message_id='ATX-123')
+        self.assertEqual(notification.recipient, '+254712345678')
+        self.assertEqual(notification.intent, 'login')
+        self.assertEqual(notification.status, 'PENDING')
+        self.assertEqual(
+            notification.response_metadata['SMSMessageData']['Recipients'][0]['messageId'],
+            'ATX-123',
+        )
+
+
+class SmsDeliveryReportCallbackTests(TestCase):
+    url = reverse('sms-dlr-callback')
+
+    def post_callback(self, data):
+        return self.client.post(
+            self.url,
+            urlencode(data),
+            content_type='application/x-www-form-urlencoded',
+        )
+
+    def test_valid_callback_updates_matching_notification(self):
+        notification = SmsNotification.objects.create(
+            provider_message_id='ATX-123',
+            recipient='+254700000000',
+        )
+
+        response = self.post_callback({
+            'id': 'ATX-123',
+            'status': 'Delivered',
+            'phoneNumber': '+254712345678',
+            'networkCode': '63902',
+            'retryCount': '2',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        notification.refresh_from_db()
+        self.assertEqual(notification.recipient, '+254712345678')
+        self.assertEqual(notification.status, 'Delivered')
+        self.assertEqual(notification.network_code, '63902')
+        self.assertEqual(notification.retry_count, 2)
+        self.assertIsNotNone(notification.delivery_reported_at)
+
+    def test_duplicate_callback_is_idempotent(self):
+        notification = SmsNotification.objects.create(
+            provider_message_id='ATX-duplicate',
+            recipient='+254700000000',
+        )
+        report = {
+            'id': 'ATX-duplicate',
+            'status': 'Failed',
+            'phoneNumber': '+254712345678',
+            'failureReason': 'Insufficient credit',
+            'retryCount': '1',
+        }
+
+        self.assertEqual(self.post_callback(report).status_code, 200)
+        self.assertEqual(self.post_callback(report).status_code, 200)
+        notification.refresh_from_db()
+        self.assertEqual(SmsNotification.objects.count(), 1)
+        self.assertEqual(notification.status, 'Failed')
+        self.assertEqual(notification.failure_reason, 'Insufficient credit')
+        self.assertEqual(notification.retry_count, 1)
+
+    def test_unknown_callback_is_accepted(self):
+        with self.assertLogs('users.views', level='WARNING'):
+            response = self.post_callback({
+                'id': 'ATX-unknown',
+                'status': 'Delivered',
+                'phoneNumber': '+254712345678',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SmsNotification.objects.exists())
+
+
+class PurgeSmsNotificationsCommandTests(TestCase):
+    def test_purges_notifications_older_than_ninety_days(self):
+        expired = SmsNotification.objects.create(
+            provider_message_id='ATX-expired',
+            recipient='+254700000000',
+        )
+        SmsNotification.objects.filter(pk=expired.pk).update(
+            created_at=timezone.now() - timedelta(days=91)
+        )
+        retained = SmsNotification.objects.create(
+            provider_message_id='ATX-retained',
+            recipient='+254700000000',
+        )
+
+        call_command('purge_sms_notifications')
+
+        self.assertFalse(SmsNotification.objects.filter(pk=expired.pk).exists())
+        self.assertTrue(SmsNotification.objects.filter(pk=retained.pk).exists())
+
+    def test_malformed_callback_is_accepted(self):
+        with self.assertLogs('users.views', level='WARNING'):
+            response = self.post_callback({
+                'id': 'ATX-malformed',
+                'status': 'Delivered',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SmsNotification.objects.exists())
