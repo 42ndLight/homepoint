@@ -13,8 +13,13 @@ class CustomUserManager(UserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
+
         if extra_fields.get('role') != 'admin':
             raise ValueError('Superuser must have role="admin".')
+
+        if not extra_fields.get('phone_number'):
+            raise ValueError('Superuser must have a phone number.')
+
         return super().create_superuser(username, email, password, **extra_fields)
 
 
@@ -47,6 +52,7 @@ class User(AbstractUser):
         related_name='users_set',
         blank=True
     )
+    REQUIRED_FIELDS = ['phone_number']
 
     class Meta:
         indexes = [
