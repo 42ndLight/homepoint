@@ -5,6 +5,37 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.validators import RegexValidator 
 User = get_user_model()
 
+
+def normalize_ke_phone_number(value):
+    """Normalize a Kenyan phone number to the +254XXXXXXXXX form used for storage/lookup."""
+    value = value.strip()
+    if value.startswith('0'):
+        value = '+254' + value[1:]
+    elif value.startswith('254'):
+        value = '+' + value
+    elif not value.startswith('+254'):
+        raise serializers.ValidationError("Invalid Phone number format.")
+
+    validator = RegexValidator(r'^\+254\d{9}$', 'Invalid format after normalization.')
+    validator(value)
+    return value
+
+
+class NewPasswordConfirmMixin:
+    """
+    Shared new_password/confirm_password fields + match validation, reused by
+    both the authenticated change-password flow and the OTP-verified reset flow.
+    """
+    new_password = serializers.CharField(required=True, write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        """Ensure new_password and confirm_password match."""
+        if data.get('new_password') != data.get('confirm_password'):
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        return data
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     @classmethod
@@ -33,19 +64,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate_phone_number(self, value):
-        value = value.strip()
-        if value.startswith('0'):
-            value = '+254' + value[1:]
-        elif value.startswith('254'):
-            value = '+' + value
-        elif not value.startswith('+254'):
-            raise serializers.ValidationError("Invalid Kenyan phone number format.")
-        
+        value = normalize_ke_phone_number(value)
+
         if User.objects.filter(phone_number=value).exists():
             raise serializers.ValidationError("Phone number already registered.")
-        
-        validator = RegexValidator(r'^\+254\d{9}$', 'Invalid format after normalization.')
-        validator(value)
+
         return value
 
     def validate_role(self, value):
@@ -66,7 +89,39 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class PasswordResetSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(required=True) 
 
+    def validate_phone_number(self, value):
+        value = normalize_ke_phone_number(value)
+
+        if not User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("Phone number is not registered.")
+
+        return value
+
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    """Verifies the OTP only — never touches the password."""
+    phone_number = serializers.CharField(required=True)
+    otp = serializers.CharField(required=True)
+
+    def validate_phone_number(self, value):
+        value = normalize_ke_phone_number(value)
+
+        if not User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("Phone number is not registered.")
+
+        return value
+
+
+class PasswordResetConfirmSerializer(NewPasswordConfirmMixin, serializers.Serializer):
+    """
+    Sets the new password using the opaque reset_token issued after OTP
+    verification (see PasswordResetVerifySerializer) — no OTP or phone
+    number is submitted here.
+    """
+    reset_token = serializers.CharField(required=True)
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """For retrieving current user + role-specific profile"""
@@ -103,23 +158,15 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class ChangePasswordSerializer(serializers.Serializer):
+class ChangePasswordSerializer(NewPasswordConfirmMixin, serializers.Serializer):
     old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, validators=[validate_password])
-    confirm_password = serializers.CharField(required=True)
-    
+
     # Method to  ensure old password is correct
     def validate_old_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
-    
-    def validate(self, data):
-        """Ensure new_password and confirm_password match."""
-        if data["new_password"] != data["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
-        return data
     
     def update(self, instance, validated_data):
         instance.set_password(validated_data['new_password'])

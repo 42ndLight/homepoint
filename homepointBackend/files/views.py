@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
-from products.permissions import IsWarehouseStaff
+from users.permissions import IsWarehouseStaff
 from .models import ImportHistory
 from .tasks import process_xlsx_import_task
 

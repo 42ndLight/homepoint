@@ -11,6 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d 
+      - shared_media:/app/media
     env_file:
      - .env
     ports:
@@ -81,7 +82,9 @@ services:
     
     ports:
       - "5173:8080"
-    
+    volumes:
+      - shared_media:/app/media:ro
+
     networks:
       - homepoint_network
     
@@ -121,6 +124,7 @@ services:
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+      - shared_media:/app/media
     ports:
       - "6379:6379"
     networks:

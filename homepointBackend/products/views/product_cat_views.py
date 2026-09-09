@@ -9,7 +9,8 @@ from django.db.models import F
 from django.db.models import Prefetch
 from django.core.cache import cache
 
-from ..permissions import IsWarehouseStaff
+from users.permissions import IsWarehouseStaff
+
 from ..models import Category, Product, Variant, Inventory, StockMovement
 from ..serializers import (
     CategorySerializer, ProductSerializer,

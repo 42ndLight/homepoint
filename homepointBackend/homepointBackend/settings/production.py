@@ -88,6 +88,11 @@ MPESA_PASSKEY = os.getenv('MPESA_PASSKEY')
 PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY')
 PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
 
+AT_USERNAME = os.getenv('AT_USERNAME', 'sandbox')
+AT_API_KEY = os.getenv('AT_API_KEY')
+# Optional registered Africa's Talking sender ID/short code shown to recipients.
+AT_SENDER_ID = os.getenv('AT_SENDER_ID')
+
 # Application definition
 
 INSTALLED_APPS = [

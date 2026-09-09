@@ -15,6 +15,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.12.1",
     "@primeuix/themes": "^2.0.3",
     "@primevue/forms": "^4.5.4",
     "@tailwindcss/vite": "^4.1.18",
@@ -29,7 +30,6 @@
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
     "qrcode": "^1.5.4",
-    "quagga": "^0.6.16",
     "tailwindcss": "^4.1.18",
     "tailwindcss-primeui": "^0.6.1",
     "vue": "^3.5.26",

@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 COPY . .
 RUN npm run build
 
@@ -21,6 +21,11 @@ RUN echo 'server { \
         root /usr/share/nginx/html; \
         index index.html; \
         try_files $uri $uri/ /index.html; \
+    } \
+    location /media/ { \
+        alias /app/media/; \
+        expires 30d; \
+        add_header Cache-Control "public, no-transform"; \
     } \
 }' > /etc/nginx/conf.d/default.conf
 

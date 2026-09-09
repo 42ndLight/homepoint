@@ -7,7 +7,7 @@
 
       <template #subtitle>
         <p class="text-center text-gray-500 mt-1">
-          Admins can create new staff or fundi accounts here. The new user will sign in from the login page.
+          Admins can create new staff accounts here. The new user will sign in from the login page.
         </p>
       </template>
 
@@ -202,7 +202,6 @@ const fieldErrors = ref({
 const roleOptions = [
   { label: 'Staff', value: 'staff' },
   { label: 'Admin', value: 'admin' },
-  { label: 'Fundi', value: 'fundi' },
   // Intentionally omit 'customer' here since this page is for staff creation
 ]
 

@@ -76,8 +76,10 @@ class AnalyticsView(APIView):
                     'total_orders': day.get('count', 0),
                     'mpesa_sales': day.get('mpesa_sales', '0'),
                     'cash_sales': day.get('cash_sales', '0'),
+                    'paystack_sales': day.get('paystack_sales', '0'),
                     'mpesa_count': day.get('mpesa_count', 0),
                     'cash_count': day.get('cash_count', 0),
+                    'paystack_count': day.get('paystack_count', 0),
                 })
             
             # Extract payment breakdown
@@ -91,6 +93,7 @@ class AnalyticsView(APIView):
                 'average_order_value': str(period_summary.get('avg_order_value', '0')),
                 'total_mpesa': str(payment_breakdown.get('mpesa', {}).get('mpesa_sales', '0')),
                 'total_cash': str(payment_breakdown.get('cash', {}).get('cash_sales', '0')),
+                'total_paystack': str(payment_breakdown.get('paystack', {}).get('paystack_sales', '0')),
             }
 
             # Get top products

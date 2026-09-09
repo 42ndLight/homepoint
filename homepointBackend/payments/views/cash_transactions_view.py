@@ -7,7 +7,7 @@ from payments.services import record_cash_sale, record_expense, record_deposit, 
 from django.db import transaction as db_transaction
 
 
-from products.permissions import IsWarehouseStaff
+from users.permissions import IsWarehouseStaff
 from payments.serializers import CashRecordSerializer
 
 

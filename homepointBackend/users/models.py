@@ -1,12 +1,26 @@
 # models.py (update from our previous schema)
 from django.db import models, transaction
-from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.contrib.auth.models import AbstractUser, Group, Permission, UserManager
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 
+class CustomUserManager(UserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('role', 'admin')
+        extra_fields.setdefault('is_verified', True)
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('role') != 'admin':
+            raise ValueError('Superuser must have role="admin".')
+        return super().create_superuser(username, email, password, **extra_fields)
+
+
 class User(AbstractUser):
+    objects = CustomUserManager()
+
     ROLE_CHOICES = (
         ('admin', 'Admin'),
         ('staff', 'Staff'),
@@ -50,6 +64,17 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             super().save(*args, **kwargs)
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+
+    @property
+    def is_staff_member(self):
+        return self.role in ['admin', 'staff']
+
+    def get_otp_cache_key(self, intent="login"):
+        return f"{intent}_otp_{self.phone_number}"
 
 # Profile models (one-to-one for extensions)
 class FundiProfile(models.Model):

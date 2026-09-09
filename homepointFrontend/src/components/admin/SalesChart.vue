@@ -33,6 +33,7 @@ const formatChartData = () => {
   const revenues = props.dailyData.map((item) => Number.parseFloat(item.total_sales) || 0)
   const mpesaSales = props.dailyData.map((item) => Number.parseFloat(item.mpesa_sales) || 0)
   const cashSales = props.dailyData.map((item) => Number.parseFloat(item.cash_sales) || 0)
+  const paystackSales = props.dailyData.map((item) => Number.parseFloat(item.paystack_sales) || 0)
 
   return {
     labels,
@@ -71,6 +72,18 @@ const formatChartData = () => {
         tension: 0.4,
         fill: false,
         pointBackgroundColor: '#10b981',
+        pointRadius: 2,
+        borderDash: [5, 5],
+      },
+      {
+        label: 'Paystack Sales',
+        data: paystackSales,
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139, 92, 246, 0.05)',
+        borderWidth: 1,
+        tension: 0.4,
+        fill: false,
+        pointBackgroundColor: '#8b5cf6',
         pointRadius: 2,
         borderDash: [5, 5],
       },

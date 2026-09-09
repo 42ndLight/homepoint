@@ -12,7 +12,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: '/',
   optimizeDeps: {
-    include: ['quagga'],
+    include: ['@ericblade/quagga2'],
   },
   plugins: [
     vue(),
