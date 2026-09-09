@@ -45,7 +45,7 @@
 
         <div class="field">
           <label for="location" class="block text-sm font-medium text-gray-700 mb-1">
-            Delivery Location <span class="text-red-500">*</span>
+            Delivery Location <span class="text-gray-500">(optional)</span>
           </label>
           <InputText
             id="location"
@@ -58,10 +58,9 @@
           <small v-if="errors.deliveryLocation" class="p-error">{{ errors.deliveryLocation }}</small>
         </div>
 
-        <!-- Conditional Email Field for Paystack -->
-        <div v-if="form.paymentMethod === 'paystack'" class="field animate-fadein">
+        <div class="field">
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-            Email Address <span class="text-red-500">*</span>
+            Email Address <span class="text-gray-500">(optional)</span>
           </label>
           <InputText
             id="email"
@@ -73,7 +72,7 @@
             :disabled="orderStore.loading"
           />
           <small v-if="errors.email" class="p-error">{{ errors.email }}</small>
-          <small class="text-gray-500 block mt-1">Required for card payment receipts</small>
+          <small class="text-gray-500 block mt-1">Used for payment receipts when provided</small>
         </div>
 
         <div class="field">
@@ -279,15 +278,10 @@ const isFormValid = computed(() => {
   const baseValid = 
     form.value.phone.trim() &&
     validatePhone(form.value.phone) &&
-    form.value.deliveryLocation.trim() &&
     form.value.paymentMethod &&
     cartStore.items.length > 0
 
-  if (form.value.paymentMethod === 'paystack') {
-    return baseValid && validateEmail(form.value.email)
-  }
-  
-  return baseValid
+  return baseValid && (!form.value.email.trim() || validateEmail(form.value.email))
 })
 
 const submitLabel = computed(() => {
@@ -317,19 +311,9 @@ const validateForm = () => {
     valid = false
   }
 
-  if (!form.value.deliveryLocation.trim()) {
-    errors.value.deliveryLocation = 'Delivery location is required'
+  if (form.value.email.trim() && !validateEmail(form.value.email)) {
+    errors.value.email = 'Enter a valid email address'
     valid = false
-  }
-
-  if (form.value.paymentMethod === 'paystack') {
-    if (!form.value.email.trim()) {
-      errors.value.email = 'Email address is required for card payments'
-      valid = false
-    } else if (!validateEmail(form.value.email)) {
-      errors.value.email = 'Enter a valid email address'
-      valid = false
-    }
   }
 
   return valid

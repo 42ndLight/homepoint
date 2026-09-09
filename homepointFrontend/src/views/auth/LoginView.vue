@@ -41,7 +41,17 @@
             An OTP has been sent to {{ phoneNumber }}
           </p>
           <div class="flex justify-center">
-            <OTPInput @update:otp="handleOtpUpdate" />
+            <OTPInput :key="otpKey" @update:otp="handleOtpUpdate" />
+          </div>
+          <div class="text-center">
+            <Button
+              :label="resendLabel"
+              text
+              size="small"
+              :disabled="resendDisabled || resendLoading"
+              :loading="resendLoading"
+              @click="handleResendOTP"
+            />
           </div>
         </div>
 
@@ -53,7 +63,7 @@
       <template #footer>
         <Button v-if="!requiresOtp" label="Login" class="w-full" :loading="loading" @click="handleLogin" />
         <div v-else class="flex gap-3">
-          <Button label="Back" severity="secondary" class="w-1/3" @click="requiresOtp = false; errorMessage = ''" />
+          <Button label="Back" severity="secondary" class="w-1/3" @click="handleBack" />
           <Button label="Verify OTP" class="w-2/3" :loading="loading" @click="handleVerifyOtp" />
         </div>
       </template>
@@ -69,7 +79,7 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import OTPInput from '@/components/OTPInput.vue'
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getErrorMessage, APIError } from '@/utils/errorHandler'
@@ -78,13 +88,41 @@ import config from '@/config/env'
 const username = ref('')
 const password = ref('')
 const otp = ref('')
+const otpKey = ref(0)
 const phoneNumber = ref('')
 const requiresOtp = ref(false)
 const loading = ref(false)
+const resendLoading = ref(false)
 const errorMessage = ref('')
+const resendAvailableAt = ref(0)
+const remainingSeconds = ref(0)
 
 const auth = useAuthStore()
 const router = useRouter()
+
+let timer = null
+const tick = () => {
+  const remainingMs = resendAvailableAt.value - Date.now()
+  remainingSeconds.value = remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0
+}
+
+const setResendCooldown = (seconds) => {
+  resendAvailableAt.value = Date.now() + Math.max(0, Number(seconds) || 0) * 1000
+  tick()
+}
+
+onMounted(() => {
+  tick()
+  timer = setInterval(tick, 1000)
+})
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
+
+const resendDisabled = computed(() => remainingSeconds.value > 0)
+const resendLabel = computed(() =>
+  resendDisabled.value ? `Resend code (${remainingSeconds.value}s)` : 'Resend code'
+)
 
 const proceedWithLogin = async (tokens) => {
   try {
@@ -142,6 +180,14 @@ const handleLogin = async () => {
     const data = await response.json().catch(() => null)
 
     if (!response.ok) {
+      if (response.status === 429 && data?.retry_after) {
+        requiresOtp.value = true
+        phoneNumber.value = data.phone_number
+        otp.value = ''
+        otpKey.value += 1
+        setResendCooldown(data.retry_after)
+        return
+      }
       throw new APIError(
         data?.detail || data?.error || data?.message || `Server error (HTTP ${response.status})`,
         response.status,
@@ -153,6 +199,8 @@ const handleLogin = async () => {
       requiresOtp.value = true
       phoneNumber.value = data.phone_number
       otp.value = ''
+      otpKey.value += 1
+      setResendCooldown(data?.retry_after || 180)
     } else {
       await proceedWithLogin(data)
     }
@@ -161,6 +209,51 @@ const handleLogin = async () => {
     errorMessage.value = getErrorMessage(err)
   } finally {
     loading.value = false
+  }
+}
+
+const handleBack = () => {
+  requiresOtp.value = false
+  otp.value = ''
+  errorMessage.value = ''
+  resendAvailableAt.value = 0
+  tick()
+}
+
+const handleResendOTP = async () => {
+  if (resendDisabled.value) return
+
+  resendLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await fetch(`${config.API_BASE_URL}/users/auth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username.value, password: password.value }),
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      if (response.status === 429 && data?.retry_after) {
+        setResendCooldown(data.retry_after)
+      }
+      throw new Error(data?.detail || data?.error || data?.message || 'Failed to resend OTP')
+    }
+
+    if (!data?.requires_otp) {
+      throw new Error('OTP verification is no longer required for this account')
+    }
+
+    phoneNumber.value = data.phone_number
+    setResendCooldown(data?.retry_after || 180)
+    otp.value = ''
+    otpKey.value += 1
+  } catch (err) {
+    errorMessage.value = getErrorMessage(err)
+  } finally {
+    resendLoading.value = false
   }
 }
 

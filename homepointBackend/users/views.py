@@ -115,12 +115,26 @@ class LoginInitiateView(APIView):
             
         if user.role in ['admin', 'staff']:
             # Trigger Africa's Talking OTP
-            generate_and_send_otp(user.phone_number, intent="login")
+            try:
+                generate_and_send_otp(
+                    user.phone_number,
+                    intent="login",
+                    cooldown_seconds=RESET_RESEND_COOLDOWN,
+                )
+            except OTPCooldownError as exc:
+                return Response({
+                    "error": "An OTP was already sent recently. Please wait before requesting another.",
+                    "retry_after": exc.remaining_seconds,
+                    "phone_number": user.phone_number,
+                    "requires_otp": True,
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
             logger.info(f"OTP initiated for {user.username} (role: {user.role})")
             return Response({
                 "message": "OTP sent to registered phone number.",
                 "phone_number": user.phone_number,
-                "requires_otp": True
+                "requires_otp": True,
+                "retry_after": RESET_RESEND_COOLDOWN,
             })
             
         # For non-admin/staff users, issue JWT immediately
