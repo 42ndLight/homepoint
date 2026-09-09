@@ -5,11 +5,12 @@ from .views import (
     ChangePasswordView, DeleteProfileView,
     LoginInitiateView, LoginVerifyOTPView,
     PasswordResetRequestView, PasswordResetVerifyOTPView,
-    PasswordResetConfirmView
+    PasswordResetConfirmView, SmsDeliveryReportCallbackView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
+    path('sms/dlr/', SmsDeliveryReportCallbackView.as_view(), name='sms-dlr-callback'),
     path('auth/register/', RegisterView.as_view(), name='register'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/logout/', LogoutView.as_view(), name='logout'),

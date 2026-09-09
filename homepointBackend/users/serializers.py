@@ -123,6 +123,18 @@ class PasswordResetConfirmSerializer(NewPasswordConfirmMixin, serializers.Serial
     """
     reset_token = serializers.CharField(required=True)
 
+
+class SmsDeliveryReportSerializer(serializers.Serializer):
+    """Validates Africa's Talking form-encoded delivery report payloads."""
+
+    id = serializers.CharField(max_length=255)
+    status = serializers.CharField(max_length=64)
+    phoneNumber = serializers.CharField(max_length=32)
+    networkCode = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    failureReason = serializers.CharField(required=False, allow_blank=True)
+    retryCount = serializers.IntegerField(required=False, min_value=0)
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """For retrieving current user + role-specific profile"""
     fundi_profile = serializers.SerializerMethodField()
