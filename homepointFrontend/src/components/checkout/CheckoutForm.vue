@@ -27,9 +27,11 @@
           </div>
         </div>
 
-        <div class="field">
+        <div v-if="showPhoneField" class="field">
           <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">
-            Phone Number <span class="text-red-500">*</span>
+            Phone Number
+            <span v-if="isMpesa" class="text-red-500">*</span>
+            <span v-else class="text-gray-500">(optional)</span>
           </label>
           <InputText
             id="phone"
@@ -40,10 +42,12 @@
             :disabled="orderStore.loading"
           />
           <small v-if="errors.phone" class="p-error">{{ errors.phone }}</small>
-          <small class="text-gray-500 block mt-1">Used for M-Pesa payment and order updates</small>
+          <small class="text-gray-500 block mt-1">
+            {{ isMpesa ? 'Required to receive the M-Pesa STK push' : 'Used for order updates when provided' }}
+          </small>
         </div>
 
-        <div class="field">
+        <div v-if="isPaystack" class="field">
           <label for="location" class="block text-sm font-medium text-gray-700 mb-1">
             Delivery Location <span class="text-gray-500">(optional)</span>
           </label>
@@ -58,7 +62,7 @@
           <small v-if="errors.deliveryLocation" class="p-error">{{ errors.deliveryLocation }}</small>
         </div>
 
-        <div class="field">
+        <div v-if="isPaystack" class="field">
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
             Email Address <span class="text-gray-500">(optional)</span>
           </label>
@@ -72,7 +76,9 @@
             :disabled="orderStore.loading"
           />
           <small v-if="errors.email" class="p-error">{{ errors.email }}</small>
-          <small class="text-gray-500 block mt-1">Used for payment receipts when provided</small>
+          <small class="text-gray-500 block mt-1">
+            Your account email is used for payment receipts when left blank.
+          </small>
         </div>
 
         <div class="field">
@@ -152,14 +158,14 @@
         </div>
 
         <div v-else class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <p class="text-blue-800 font-medium">Cash on Delivery</p>
+          <p class="text-blue-800 font-medium">Cash Payment Recorded</p>
           <p class="text-sm text-blue-700 mt-1">
-            Please prepare KES {{ formatPrice(orderTotal) }} for payment upon delivery.
+            KES {{ formatPrice(orderTotal) }} has been recorded as paid.
           </p>
         </div>
 
         <div class="text-sm text-gray-600 space-y-1 text-left bg-gray-50 rounded-lg p-4">
-          <div class="flex justify-between">
+          <div v-if="form.phone" class="flex justify-between">
             <span>Phone:</span>
             <span class="font-medium">{{ form.phone }}</span>
           </div>
@@ -167,7 +173,7 @@
             <span>Email:</span>
             <span class="font-medium">{{ form.email }}</span>
           </div>
-          <div class="flex justify-between">
+          <div v-if="form.deliveryLocation" class="flex justify-between">
             <span>Delivery to:</span>
             <span class="font-medium">{{ form.deliveryLocation }}</span>
           </div>
@@ -198,6 +204,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useCartStore } from '@/stores/cart'
 import { useOrderStore } from '@/stores/order'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   modelValue: {
@@ -209,6 +216,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'order-complete'])
 const cartStore = useCartStore()
 const orderStore = useOrderStore()
+const authStore = useAuthStore()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -256,11 +264,9 @@ const validatePhone = (phone) => {
 }
 
 const validateEmail = (email) => {
-  if (!email) return false
+  if (email.length > 254) return false
 
-  if (email.length > 254) return false;
-
-  return /^[^\s@]+@[^\s@\.]+(?:\.[^\s@\.]+)+$/.test(email)
+  return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email)
 }
 
 const formatPhoneForAPI = (phone) => {
@@ -274,14 +280,18 @@ const formatPhoneForAPI = (phone) => {
   return '254' + cleaned
 }
 
-const isFormValid = computed(() => {
-  const baseValid = 
-    form.value.phone.trim() &&
-    validatePhone(form.value.phone) &&
-    form.value.paymentMethod &&
-    cartStore.items.length > 0
+const isMpesa = computed(() => form.value.paymentMethod === 'mpesa')
+const isPaystack = computed(() => form.value.paymentMethod === 'paystack')
+const showPhoneField = computed(() => isMpesa.value || isPaystack.value)
+const paymentEmail = computed(() => form.value.email.trim() || authStore.user?.email || '')
 
-  return baseValid && (!form.value.email.trim() || validateEmail(form.value.email))
+const isFormValid = computed(() => {
+  const phoneIsValid = !isMpesa.value || (
+    form.value.phone.trim() && validatePhone(form.value.phone)
+  )
+  const emailIsValid = !isPaystack.value || validateEmail(paymentEmail.value)
+
+  return phoneIsValid && emailIsValid && form.value.paymentMethod && cartStore.items.length > 0
 })
 
 const submitLabel = computed(() => {
@@ -303,15 +313,15 @@ const validateForm = () => {
   errors.value = { phone: '', email: '', deliveryLocation: '' }
   let valid = true
 
-  if (!form.value.phone.trim()) {
+  if (isMpesa.value && !form.value.phone.trim()) {
     errors.value.phone = 'Phone number is required'
     valid = false
-  } else if (!validatePhone(form.value.phone)) {
+  } else if (isMpesa.value && !validatePhone(form.value.phone)) {
     errors.value.phone = 'Enter a valid phone number'
     valid = false
   }
 
-  if (form.value.email.trim() && !validateEmail(form.value.email)) {
+  if (isPaystack.value && !validateEmail(paymentEmail.value)) {
     errors.value.email = 'Enter a valid email address'
     valid = false
   }
@@ -324,31 +334,47 @@ const handleSubmit = async () => {
 
   orderStore.clearError()
 
-  const formattedPhone = formatPhoneForAPI(form.value.phone)
+  const formattedPhone = form.value.phone.trim()
+    ? formatPhoneForAPI(form.value.phone)
+    : 'Walk-in sale'
+  const deliveryLocation = form.value.deliveryLocation.trim() || 'Not provided'
   const totalBeforeOrder = cartStore.total
 
   const result = await orderStore.createOrder(
     cartStore.items,
     formattedPhone,
-    form.value.deliveryLocation,
+    deliveryLocation,
     form.value.paymentMethod
   )
 
   if (result.success) {
+    let completedOrder = result.order
+
+    if (form.value.paymentMethod === 'cash') {
+      const cashResult = await orderStore.completeCashPayment(
+        result.order.id,
+        totalBeforeOrder,
+        'SALE'
+      )
+      if (!cashResult.success) return
+
+      completedOrder = cashResult.order
+    }
+
     if (form.value.paymentMethod === 'paystack') {
-        const paystackRes = await orderStore.initializePaystack(
-            result.order.id,
-            form.value.email.trim()
-        )
-        if (paystackRes.success && paystackRes.authorization_url) {
-            globalThis.location.href = paystackRes.authorization_url
-            return
-        }
+      const paystackRes = await orderStore.initializePaystack(
+        result.order.id,
+        paymentEmail.value
+      )
+      if (paystackRes.success && paystackRes.authorization_url) {
+        globalThis.location.href = paystackRes.authorization_url
+        return
+      }
     }
 
     orderTotal.value = totalBeforeOrder
     orderComplete.value = true
-    emit('order-complete', result.order)
+    emit('order-complete', completedOrder)
   }
 }
 

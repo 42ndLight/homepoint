@@ -196,14 +196,14 @@ export const useOrderStore = defineStore('order', () => {
         transaction_type,
       })
 
-      // Update order in current and pending lists
-      if (response.order_id) {
-          updateOrderInLists({ id: response.order_id, ...response });
+      const orderResult = await fetchOrder(order_id)
+      if (!orderResult.success) {
+        throw new Error('Cash payment was recorded, but the order could not be refreshed')
       }
 
       return {
         success: true,
-        order: response.order,
+        order: orderResult.order,
         message: response.message || 'Cash payment completed successfully',
       }
     } catch (err) {

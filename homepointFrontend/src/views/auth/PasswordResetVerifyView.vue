@@ -157,7 +157,7 @@ const handleResendOTP = async () => {
       throw new Error(data?.error || data?.detail || 'Failed to resend OTP')
     }
 
-    resetStore.setResendCooldown(data?.retry_after || 180)
+    resetStore.setResendCooldown(data?.retry_after || 60)
     tick()
     otp.value = ''
     otpKey.value += 1

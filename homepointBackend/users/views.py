@@ -14,7 +14,7 @@ import logging
 
 from .serializers import (
     RegisterSerializer, CustomTokenObtainPairSerializer,
-    UserProfileSerializer, UpdateProfileSerializer,
+    UserProfileSerializer, UserRoleSerializer, UpdateProfileSerializer,
     ChangePasswordSerializer, UserDeleteSerializer,
     PasswordResetSerializer, PasswordResetVerifySerializer,
     PasswordResetConfirmSerializer, SmsDeliveryReportSerializer
@@ -98,7 +98,7 @@ class RegisterView(generics.CreateAPIView):
         logger.info(f"Admin registered new user: {user.username} (Role: {user.role})")
         return Response({
             'user': UserProfileSerializer(user).data,
-            'message': 'Registration successful. User must verify phone via OTP at login.'
+            'message': 'Registration successful.'
         }, status=status.HTTP_201_CREATED)
 
 
@@ -113,34 +113,9 @@ class LoginInitiateView(APIView):
         if not user:
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
             
-        if user.role in ['admin', 'staff']:
-            # Trigger Africa's Talking OTP
-            try:
-                generate_and_send_otp(
-                    user.phone_number,
-                    intent="login",
-                    cooldown_seconds=RESET_RESEND_COOLDOWN,
-                )
-            except OTPCooldownError as exc:
-                return Response({
-                    "error": "An OTP was already sent recently. Please wait before requesting another.",
-                    "retry_after": exc.remaining_seconds,
-                    "phone_number": user.phone_number,
-                    "requires_otp": True,
-                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
-
-            logger.info(f"OTP initiated for {user.username} (role: {user.role})")
-            return Response({
-                "message": "OTP sent to registered phone number.",
-                "phone_number": user.phone_number,
-                "requires_otp": True,
-                "retry_after": RESET_RESEND_COOLDOWN,
-            })
-            
-        # For non-admin/staff users, issue JWT immediately
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        logger.info(f"User {user.username} logged in without OTP.")
+        logger.info(f"User {user.username} logged in.")
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 class LoginVerifyOTPView(APIView):
@@ -268,11 +243,12 @@ class PasswordResetConfirmView(APIView):
         return Response({"message": "Password updated successfully."})
 
 class UserProfileView(generics.RetrieveAPIView):
-    serializer_class = UserProfileSerializer
+    serializer_class = UserRoleSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
+
 
 class UpdateProfileView(generics.UpdateAPIView):
     serializer_class = UpdateProfileSerializer
@@ -280,6 +256,17 @@ class UpdateProfileView(generics.UpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(UserProfileSerializer(serializer.instance).data)
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -324,3 +311,19 @@ class DeleteProfileView(generics.DestroyAPIView):
         serializer.is_valid(raise_exception=True)
         user.delete()
         return Response({"message": "Account deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class StaffListView(generics.ListAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        return User.objects.filter(role='staff').order_by('username')
+
+
+class StaffDeleteView(generics.DestroyAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        return User.objects.filter(role='staff')

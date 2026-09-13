@@ -141,9 +141,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ('id', 'phone_number', 'role', 'first_name', 'last_name', 
+        fields = ('id', 'username', 'email', 'phone_number', 'role', 'first_name', 'last_name',
                   'is_verified', 'groups', 'fundi_profile')
-        read_only_fields = ('phone_number', 'role')
+        read_only_fields = ('username', 'email', 'phone_number', 'role')
 
     def get_fundi_profile(self, obj):
         if obj.role == 'fundi' and hasattr(obj, 'fundi_profile'):
@@ -159,16 +159,28 @@ class UserProfileSerializer(serializers.ModelSerializer):
             }
         return None
 
+class UserRoleSerializer(serializers.ModelSerializer):
+    """Lean serializer strictly for frontend screen routing"""
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'role', 'is_verified')
+
+
 class UpdateProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('first_name', 'last_name')
+        fields = ('username', 'email', 'phone_number', 'first_name', 'last_name')
 
-    def update(self, instance, validated_data):
-        instance.first_name = validated_data.get('first_name', instance.first_name)
-        instance.last_name = validated_data.get('last_name', instance.last_name)
-        instance.save()
-        return instance
+    def validate_phone_number(self, value):
+        phone_number = normalize_ke_phone_number(value)
+        existing_user = User.objects.filter(phone_number=phone_number)
+        if self.instance:
+            existing_user = existing_user.exclude(pk=self.instance.pk)
+
+        if existing_user.exists():
+            raise serializers.ValidationError("Phone number already registered.")
+
+        return phone_number
 
 class ChangePasswordSerializer(NewPasswordConfirmMixin, serializers.Serializer):
     old_password = serializers.CharField(required=True)

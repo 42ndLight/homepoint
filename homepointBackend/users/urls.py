@@ -3,6 +3,7 @@ from .views import (
     RegisterView, UserProfileView,
     UpdateProfileView, LogoutView, 
     ChangePasswordView, DeleteProfileView,
+    StaffListView, StaffDeleteView,
     LoginInitiateView, LoginVerifyOTPView,
     PasswordResetRequestView, PasswordResetVerifyOTPView,
     PasswordResetConfirmView, SmsDeliveryReportCallbackView
@@ -18,6 +19,8 @@ urlpatterns = [
     path('auth/profile/update/', UpdateProfileView.as_view(), name='profile_update'),
     path('auth/profile/update/password/', ChangePasswordView.as_view(), name='profile-update-pass'),
     path('auth/profile/delete/', DeleteProfileView.as_view(), name='profile_delete'),
+    path('auth/staff/', StaffListView.as_view(), name='staff_list'),
+    path('auth/staff/<int:pk>/', StaffDeleteView.as_view(), name='staff_delete'),
     
     # OTP Login & Password Reset routes
     path('auth/token/', LoginInitiateView.as_view(), name='token_obtain_pair'),

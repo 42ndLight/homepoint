@@ -28,7 +28,7 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
                 if not data.get('order'):
                     raise serializers.ValidationError({"order_id": "Order is required for sales."})
                 
-                record_cash_sale(
+                cash_transaction = record_cash_sale(
                     user=user,
                     order=data['order'],
                     amount=amount,
@@ -39,7 +39,7 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
             elif t_type == 'EXPENSE':
                 # Note: Expense might need a 'category' from request data 
                 # If not in serializer, provide a default or update serializer
-                record_expense(
+                cash_transaction = record_expense(
                     user=user,
                     amount=amount,
                     category=data.get('category', 'OTHER'), 
@@ -50,7 +50,7 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
 
             elif t_type == 'DEPOSIT':
                 # Records moving cash OUT of 'CASH' account into 'BANK'
-                record_deposit(
+                cash_transaction = record_deposit(
                     user=user,
                     amount=amount,
                     authorized_by=user, # Or specific logic for authorizer
@@ -61,7 +61,7 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
 
             elif t_type == 'WITHDRAWAL':
                 # Records moving money from 'BANK' into 'CASH'
-                record_withdrawal(
+                cash_transaction = record_withdrawal(
                     user=user,
                     amount=amount,
                     authorized_by=user,
@@ -75,3 +75,5 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
         except ValueError as e:
             # Catch 'Insufficient balance' errors from services
             raise serializers.ValidationError({"detail": str(e)})
+
+        serializer.instance = cash_transaction

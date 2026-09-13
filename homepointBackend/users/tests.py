@@ -8,8 +8,9 @@ from django.urls import reverse
 from django.test.utils import override_settings
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.test import APIClient
 
-from .models import SmsNotification
+from .models import SmsNotification, User
 from .utils import generate_and_send_otp, get_otp_cache_key, send_at_sms
 
 
@@ -38,6 +39,122 @@ class OTPGenerationTests(TestCase):
         generate_and_send_otp(self.phone_number, intent="login")
 
         self.assertEqual(cache.get(get_otp_cache_key("login", self.phone_number)), "999999")
+
+
+class LoginTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='staff-user',
+            email='staff@example.com',
+            phone_number='+254700000002',
+            password='password',
+            role='staff',
+        )
+
+    def test_staff_login_issues_tokens_without_otp(self):
+        response = self.client.post(
+            reverse('token_obtain_pair'),
+            {'username': self.user.username, 'password': 'password'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertFalse(
+            cache.get(get_otp_cache_key('login', self.user.phone_number))
+        )
+
+
+class ProfileUpdateTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='profile-user',
+            email='profile@example.com',
+            phone_number='+254700000004',
+            password='password',
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_user_can_update_identity_and_contact_details(self):
+        response = self.client.patch(
+            reverse('profile_update'),
+            {
+                'username': 'updated-user',
+                'email': 'updated@example.com',
+                'phone_number': '0712345678',
+                'first_name': 'Updated',
+                'last_name': 'User',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['username'], 'updated-user')
+        self.assertEqual(response.data['email'], 'updated@example.com')
+        self.assertEqual(response.data['phone_number'], '+254712345678')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'updated-user')
+        self.assertEqual(self.user.email, 'updated@example.com')
+        self.assertEqual(self.user.phone_number, '+254712345678')
+
+
+class StaffManagementTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            phone_number='+254700000001',
+            password='password',
+            role='admin',
+        )
+        self.staff = User.objects.create_user(
+            username='staff-user',
+            email='staff@example.com',
+            phone_number='+254700000002',
+            password='password',
+            role='staff',
+        )
+        self.customer = User.objects.create_user(
+            username='customer',
+            email='customer@example.com',
+            phone_number='+254700000003',
+            password='password',
+            role='customer',
+        )
+
+    def test_admin_can_list_staff_only(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.get(reverse('staff_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([user['id'] for user in response.data], [self.staff.id])
+
+    def test_non_admin_cannot_list_or_delete_staff(self):
+        self.client.force_authenticate(self.staff)
+
+        self.assertEqual(self.client.get(reverse('staff_list')).status_code, 403)
+        self.assertEqual(
+            self.client.delete(reverse('staff_delete', args=[self.staff.id])).status_code,
+            403,
+        )
+        self.assertTrue(User.objects.filter(pk=self.staff.id).exists())
+
+    def test_admin_can_delete_staff_but_not_non_staff(self):
+        self.client.force_authenticate(self.admin)
+
+        self.assertEqual(
+            self.client.delete(reverse('staff_delete', args=[self.staff.id])).status_code,
+            204,
+        )
+        self.assertFalse(User.objects.filter(pk=self.staff.id).exists())
+        self.assertEqual(
+            self.client.delete(reverse('staff_delete', args=[self.customer.id])).status_code,
+            404,
+        )
 
 
 class AfricaTalkingSmsTests(TestCase):
