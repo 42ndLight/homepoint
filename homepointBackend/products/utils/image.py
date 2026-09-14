@@ -7,6 +7,8 @@ import requests
 from django.conf import settings
 from PIL import Image
 
+from django.core.files.storage import default_storage
+
 
 def _load_url_image(url):
     response = requests.get(url, timeout=15)
@@ -36,9 +38,15 @@ def _load_file_image(source):
 
 def _load_image_bytes(source):
     if isinstance(source, str):
+        if default_storage.exists(source):
+            with default_storage.open(source, 'rb') as f:
+                return io.BytesIO(f.read())
+        return _load_path_image(source)
+
         if source.startswith(("http://", "https://")):
             return _load_url_image(source)
         return _load_path_image(source)
+
     if isinstance(source, bytes):
         return io.BytesIO(source)
     if hasattr(source, "read"):

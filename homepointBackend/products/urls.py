@@ -1,10 +1,10 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
-from products.views.product_cat_views import (
-    CategoryViewSet, ProductViewSet,
-    VariantViewSet, InventoryViewSet
-)
 from products.views.image_pipeline_views import ImageUploadView
+from products.views.product_control_views import ProductViewSet
+from products.views.category_control_views import CategoryViewSet
+from products.views.variant_control_views import VariantViewSet
+from products.views.inventory_control_views import InventoryViewSet
 
 app_name='products'
 

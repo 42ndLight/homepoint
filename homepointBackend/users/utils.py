@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Reset OTPs stay valid for 6 minutes.
 RESET_OTP_TTL = 360
 # Minimum time a user must wait before a reset OTP can be resent.
-RESET_RESEND_COOLDOWN = 180
+RESET_RESEND_COOLDOWN = 60
 # How long a verified-reset grant remains usable to set a new password.
 RESET_GRANT_TTL = 300
 
@@ -183,6 +183,7 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
     if cooldown_seconds:
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
+    print(f"{phone_number} : {otp}")
     logger.info(f"Generated OTP for {phone_number} (intent={intent})")
 
     sender_id = getattr(settings, 'AT_SENDER_ID', None)
