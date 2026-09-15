@@ -8,6 +8,7 @@ from django.conf import settings
 from PIL import Image
 
 from django.core.files.storage import default_storage
+from django.core.exceptions import SuspiciousFileOperation
 
 
 def _load_url_image(url):
@@ -38,12 +39,19 @@ def _load_file_image(source):
 
 def _load_image_bytes(source):
     if isinstance(source, str):
-        if default_storage.exists(source):
-            with default_storage.open(source, 'rb') as f:
-                return io.BytesIO(f.read())
-
+        # 1. Check HTTP/HTTPS URLs first
         if source.startswith(("http://", "https://")):
             return _load_url_image(source)
+
+        # 2. Check default_storage (S3/Tigris Bucket)
+        try:
+            if default_storage.exists(source):
+                with default_storage.open(source, "rb") as f:
+                    return io.BytesIO(f.read())
+        except (SuspiciousFileOperation, ValueError):
+            pass
+
+        # 3. Fallback to local filesystem path
         return _load_path_image(source)
 
     if isinstance(source, bytes):

@@ -39,7 +39,7 @@ def process_image_optimization_task(self, image_id, model_type):
     try:
         # Prefer a directly accessible stored file before falling back to its URL.
         if obj.local_image and obj.local_image.name:
-            image_source = obj.local_image
+            image_source = obj.local_image.name
         elif obj.raw_external_url:
             image_source = obj.raw_external_url
         else:
