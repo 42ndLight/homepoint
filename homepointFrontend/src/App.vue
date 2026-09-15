@@ -76,6 +76,8 @@ const menuItems = computed(() => {
   return items.filter(item => !item.visible || item.visible())
 })
 
+const isPosRoute = computed(() => route.name === 'pos')
+
 // User menu (top-right), only show registration entry for admins
 const userMenuItems = computed(() => {
   const items = [
@@ -118,9 +120,12 @@ const userMenuItems = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 no-print-background">
+  <div
+    class="bg-gray-50 no-print-background"
+    :class="isPosRoute ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen'"
+  >
     <!-- Navigation Bar -->
-    <Menubar v-if="authStore.isAuthenticated && route.name !== 'login'" :model="menuItems" class="mb-4 no-print">
+    <Menubar v-if="authStore.isAuthenticated && route.name !== 'login'" :model="menuItems" class="mb-4 no-print shrink-0">
       <template #end>
         <div v-if="authStore.isAuthenticated" class="flex items-center gap-2 mr-3 text-sm" title="Sync status">
           <span class="flex items-center gap-1.5 px-2 py-1 rounded-full" :class="isOnline ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'">
@@ -136,10 +141,11 @@ const userMenuItems = computed(() => {
     </Menubar>
 
     <!-- Main Content -->
-    <router-view />
+    <div :class="isPosRoute ? 'flex-1 min-h-0 overflow-hidden' : ''">
+      <router-view />
+    </div>
 
     <!-- Toast Notifications -->
     <Toast />
   </div>
 </template>
-

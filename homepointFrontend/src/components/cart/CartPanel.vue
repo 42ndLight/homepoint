@@ -1,11 +1,27 @@
 <template>
-  <Panel header="Cart" class="h-full flex flex-col">
+  <Panel
+    header="Cart"
+    class="h-full flex flex-col"
+    :pt="{ content: { class: 'flex flex-col flex-1 min-h-0' } }"
+  >
     <template #header>
       <div class="flex items-center justify-between w-full">
-        <span class="font-semibold">Cart</span>
-        <span v-if="cartStore.items.length" class="text-sm text-gray-500">
-          {{ cartStore.itemCount }} item(s)
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="font-semibold">Cart</span>
+          <span v-if="cartStore.items.length" class="text-sm text-gray-500">
+            {{ cartStore.itemCount }} item(s)
+          </span>
+        </div>
+        <Button
+          aria-label="Open orders"
+          icon="pi pi-receipt"
+          severity="secondary"
+          text
+          rounded
+          @click="emit('open-orders')"
+        >
+          <Badge v-if="pendingCount > 0" :value="pendingCount" severity="warn" class="ml-1" />
+        </Button>
       </div>
     </template>
 
@@ -56,14 +72,20 @@
 <script setup>
 import Panel from 'primevue/panel'
 import Button from 'primevue/button'
-import CartItem from './CartItem.vue' 
+import Badge from 'primevue/badge'
+import CartItem from './CartItem.vue'
 import { useCartStore } from '@/stores/cart'
-import { useOrderStore } from '@/stores/order'
 
-const emit = defineEmits(['checkout'])
+defineProps({
+  pendingCount: {
+    type: Number,
+    default: 0,
+  },
+})
+
+const emit = defineEmits(['checkout', 'open-orders'])
 
 const cartStore = useCartStore()
-const orderStore = useOrderStore()
 
 const formatPrice = (price) => {
   if (!price && price !== 0) return '0.00'

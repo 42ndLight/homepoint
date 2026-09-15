@@ -1,14 +1,14 @@
 <template>
-  <div class="pos-layout flex flex-col lg:flex-row h-[calc(100vh-5rem)] min-h-0 gap-4 p-4">
+  <div class="pos-layout flex flex-col lg:flex-row h-full min-h-0 gap-4 overflow-hidden p-4">
     <!-- Left: Product search & grid -->
     <div class="flex-1 flex flex-col min-w-0 min-h-0">
       <!-- Header: title + controls -->
-      <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 mb-4 shrink-0">
+      <div class="flex flex-col xl:flex-row xl:items-center gap-3 mb-4 shrink-0">
         <h1 class="text-2xl font-bold whitespace-nowrap">Point of Sale</h1>
 
         <div class="flex flex-col sm:flex-row gap-2 sm:items-center w-full xl:w-auto">
           <ProductSearch
-            class="w-full sm:min-w-[260px] sm:max-w-md"
+            class="w-full sm:w-[22rem]"
             @select="handleProductSelected"
           />
           <div class="flex gap-2 shrink-0">
@@ -32,7 +32,7 @@
       <div class="flex-1 overflow-auto min-h-0">
         <DataView v-if="!loading" :value="sellableItems" layout="grid">
           <template #grid="slotProps">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <PosItemCard
                 v-for="item in slotProps.items"
                 :key="item.id"
@@ -57,28 +57,14 @@
     </div>
 
     <!-- Right: Cart panel & Orders -->
-    <div class="w-full lg:w-96 xl:w-[420px] flex-shrink-0 flex flex-col gap-3 min-h-0">
+    <div class="w-full h-[42%] lg:h-full lg:w-96 xl:w-[420px] flex-shrink-0 flex flex-col min-h-0">
       <div class="flex-1 min-h-0">
         <CartPanel
+          :pending-count="pendingCount"
           @checkout="handleCheckout"
+          @open-orders="showOrdersSidebar = true"
         />
       </div>
-      
-      <Button
-        label="Orders"
-        icon="pi pi-receipt"
-        severity="secondary"
-        outlined
-        class="relative w-full py-3 bg-white font-semibold shrink-0"
-        @click="showOrdersSidebar = true"
-      >
-        <Badge
-          v-if="pendingCount > 0"
-          :value="pendingCount"
-          severity="warn"
-          class="absolute -top-2 -right-2"
-        />
-      </Button>
     </div>
 
     <Dialog
@@ -115,7 +101,6 @@ import CartPanel from '@/components/cart/CartPanel.vue'
 import BarcodeScanner from '@/components/barcode/BarcodeScanner.vue'
 import CheckoutForm from '@/components/checkout/CheckoutForm.vue'
 import OrdersSidebar from '@/components/checkout/OrdersSidebar.vue'
-import Badge from 'primevue/badge'
 import { getSellableItems, syncProducts } from '@/services/dbService'
 import { useCartStore } from '@/stores/cart'
 import { useOrderStore } from '@/stores/order'

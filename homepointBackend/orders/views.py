@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from django.db import transaction
@@ -18,7 +19,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             Prefetch(
                 'items',
                 queryset=OrderItem.objects.select_related('variant__product', 'variant__inventory')
-            )
+            ),
+            'cash_transactions',
+            'mpesa_transactions',
+            'paystack_transactions',
         )
 
         if self.request.user.is_authenticated:
@@ -102,3 +106,45 @@ class OrderViewSet(viewsets.ModelViewSet):
             "message": "Order created successfully. Proceed to M-Pesa payment.",
             "order": response_serializer.data
         }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='complete-mpesa', permission_classes=[IsWarehouseStaff])
+    def complete_mpesa(self, request, pk=None):
+        """
+        Manually record a confirmed M-Pesa payment (e.g. staff reconciling a
+        receipt number reported by the customer) and mark the order paid.
+        """
+        order = self.get_object()
+        mpesa_receipt_number = (request.data.get('mpesa_receipt_number') or '').strip()
+        phone_number = (request.data.get('phone_number') or '').strip()
+
+        if not mpesa_receipt_number or not phone_number:
+            return Response(
+                {"detail": "mpesa_receipt_number and phone_number are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if order.status == 'paid':
+            return Response({"detail": f"Order #{order.id} is already marked as paid."},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        from payments.services import record_mpesa_sale
+        import uuid
+
+        try:
+            record_mpesa_sale(
+                user=request.user,
+                order=order,
+                amount=order.total_amount,
+                phone_number=phone_number,
+                checkout_request_id=f"MANUAL-{uuid.uuid4().hex[:12]}",
+                mpesa_receipt=mpesa_receipt_number,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.refresh_from_db()
+        response_serializer = OrderDetailSerializer(order)
+        return Response({
+            "message": "M-Pesa payment completed successfully",
+            "order": response_serializer.data,
+        }, status=status.HTTP_200_OK)

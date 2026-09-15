@@ -113,7 +113,8 @@
     <!-- Footer -->
     <div class="text-center border-t border-gray-400 pt-4">
       <p class="text-xs text-gray-600 mb-2">Thank you for your purchase!</p>
-      <p class="text-xs text-gray-600">Payment: {{ paymentMethod }}</p>
+      <p class="text-xs text-gray-600">Payment: {{ paymentMethodLabel }}</p>
+      <p v-if="paymentReference" class="text-xs text-gray-600">Ref: {{ paymentReference }}</p>
       <p class="text-xs text-gray-600">{{ receiptData.date }} {{ receiptData.time }}</p>
       <p class="text-xs text-gray-600 mt-2">Powered by HOMEPOINT POS</p>
     </div>
@@ -135,14 +136,16 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  paymentMethod: {
-    type: String,
-    default: 'M-Pesa',
+  payment: {
+    type: Object,
+    default: null,
   },
 })
 
 const storeInfo = computed(() => getStoreInfo())
 const receiptData = computed(() => formatReceiptData(props.order))
+const paymentMethodLabel = computed(() => props.payment?.method_display || 'Not available')
+const paymentReference = computed(() => props.payment?.reference || null)
 const qrCodeData = ref(null)
 const formatWithDashes = (str) => {
   if (!str) return '';

@@ -354,7 +354,7 @@ const handleSubmit = async () => {
       const cashResult = await orderStore.completeCashPayment(
         result.order.id,
         totalBeforeOrder,
-        'SALE'
+        'SALES'
       )
       if (!cashResult.success) return
 

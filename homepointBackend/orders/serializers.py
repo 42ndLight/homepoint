@@ -66,9 +66,53 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
+    payment = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = ['id', 'phone_number', 'delivery_location', 'total_amount',
-                  'status', 'created_at', 'items']
-        read_only_fields = ['id', 'total_amount', 'status', 'created_at']
+                  'status', 'created_at', 'items', 'payment']
+        read_only_fields = ['id', 'total_amount', 'status', 'created_at', 'payment']
+
+    # Canonical, receipt-facing payment summary. Only ever reports the newest
+    # SUCCESSFUL transaction for the order — pending/failed attempts must
+    # never be surfaced as receipt payment data.
+    def get_payment(self, obj):
+        candidates = []
+
+        for cash_tx in obj.cash_transactions.all():
+            if cash_tx.status == 'SUCCESS':
+                candidates.append({
+                    'method': 'cash',
+                    'method_display': 'Cash',
+                    'status': cash_tx.status,
+                    'reference': cash_tx.receipt_number or None,
+                    'paid_at': cash_tx.created_at,
+                })
+
+        for mpesa_tx in obj.mpesa_transactions.all():
+            if mpesa_tx.status == 'SUCCESS':
+                candidates.append({
+                    'method': 'mpesa',
+                    'method_display': 'M-Pesa',
+                    'status': mpesa_tx.status,
+                    'reference': mpesa_tx.mpesa_receipt_number or None,
+                    'paid_at': mpesa_tx.timestamp,
+                })
+
+        for paystack_tx in obj.paystack_transactions.all():
+            if paystack_tx.status == 'SUCCESS':
+                candidates.append({
+                    'method': 'paystack',
+                    'method_display': 'Card',
+                    'status': paystack_tx.status,
+                    'reference': paystack_tx.paystack_reference or None,
+                    'paid_at': paystack_tx.timestamp,
+                })
+
+        if not candidates:
+            return None
+
+        latest = max(candidates, key=lambda c: c['paid_at'])
+        latest = {**latest, 'paid_at': latest['paid_at'].strftime('%Y-%m-%d %H:%M') if latest['paid_at'] else None}
+        return latest

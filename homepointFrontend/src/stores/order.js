@@ -15,7 +15,7 @@ export const useOrderStore = defineStore('order', () => {
   const currentOrderStatus = computed(() => currentOrder.value?.status)
   const hasPendingOrders = computed(() => pendingOrders.value.length > 0)
 
-  const createOrder = async (cartItems, customerPhone, deliveryLocation, paymentMethod = 'mpesa') => {
+  const createOrder = async (cartItems, customerPhone, deliveryLocation, paymentMethod) => {
     const cartStore = useCartStore()
     loading.value = true
     error.value = null

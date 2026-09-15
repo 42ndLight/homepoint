@@ -18,6 +18,7 @@
             icon="pi pi-print"
             label="Print"
             class="p-button-primary"
+            :disabled="!isReceiptReady"
             @click="printReceipt"
           />
         </div>
@@ -39,9 +40,9 @@
       </div>
 
       <!-- Receipt Display -->
-      <div v-else-if="order" class="bg-white rounded-lg shadow no-print-background">
+      <div v-else-if="order && isReceiptReady" class="bg-white rounded-lg shadow no-print-background">
         <div class="p-8 no-print-padding">
-          <ETIMSReceipt :order="order" :paymentMethod="paymentMethod" />
+          <ETIMSReceipt :order="order" :payment="order.payment" />
         </div>
 
         <!-- Actions -->
@@ -66,6 +67,21 @@
             @click="newOrder"
           />
         </div>
+      </div>
+
+      <!-- Payment Not Yet Confirmed State -->
+      <div v-else-if="order" class="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center no-print">
+        <i class="pi pi-clock text-4xl text-yellow-500 mb-3"></i>
+        <p class="text-yellow-800 font-medium">Payment not yet confirmed</p>
+        <p class="text-sm text-yellow-700 mt-1">
+          A receipt can only be issued once payment for Order #{{ order.id }} has been confirmed.
+        </p>
+        <PButton
+          label="Refresh Status"
+          icon="pi pi-refresh"
+          class="p-button-secondary mt-4"
+          @click="fetchOrder"
+        />
       </div>
 
       <!-- Empty State -->
@@ -102,14 +118,16 @@ const orderId = computed(() => route.params.orderId || route.query.orderId)
 const order = computed(() => orderStore.currentOrder)
 const loading = computed(() => orderStore.loading)
 const error = computed(() => orderStore.error)
-const paymentMethod = computed(() => 
-  order.value?.payment_method === 'cash' ? 'Cash' : 'M-Pesa'
+// A receipt is only final/printable once the order is paid AND the backend
+// has resolved a confirmed (SUCCESS) payment transaction for it.
+const isReceiptReady = computed(() =>
+  order.value?.status === 'paid' && order.value?.payment?.status === 'SUCCESS'
 )
 
 onMounted(async () => {
   if (orderId.value) {
     const result = await orderStore.fetchOrder(orderId.value)
-    if (result.success && route.query.print === 'true') {
+    if (result.success && isReceiptReady.value && route.query.print === 'true') {
       // Small delay to ensure the DOM is rendered before printing
       setTimeout(() => {
         window.print()

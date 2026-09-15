@@ -181,22 +181,6 @@ USE_I18N = True
 USE_TZ = True
 
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles_collected'
-
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',  
-]
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-
-
 # Celery Configuration
 # Broker/result backend (can be overridden via environment)
 CELERY_BROKER_URL = os.environ.get('REDIS_URL')

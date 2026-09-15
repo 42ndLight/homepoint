@@ -4,7 +4,7 @@
       <i class="pi pi-search" />
       <InputText
         v-model="searchQuery"
-        placeholder="Search products (e.g., 'cemnt' for Cement)..."
+        placeholder="Search products (e.g., cement)"
         class="w-full"
         @input="handleSearch"
         @focus="showResults = true"
@@ -103,4 +103,3 @@ onMounted(() => {
   padding: 0;
 }
 </style>
-
