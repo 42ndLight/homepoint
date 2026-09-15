@@ -41,7 +41,6 @@ def _load_image_bytes(source):
         if default_storage.exists(source):
             with default_storage.open(source, 'rb') as f:
                 return io.BytesIO(f.read())
-        return _load_path_image(source)
 
         if source.startswith(("http://", "https://")):
             return _load_url_image(source)
