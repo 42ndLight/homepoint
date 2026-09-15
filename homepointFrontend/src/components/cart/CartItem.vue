@@ -3,6 +3,7 @@
     <div class="flex-1 min-w-0">
       <div class="font-medium text-gray-900 truncate">{{ item.name }}</div>
       <div class="text-xs text-gray-500">{{ item.sku }}</div>
+      <span class="text-sm text-gray-600">KES {{ formatPrice(item.price) }}</span>
     </div>
     <div class="flex items-center gap-2 flex-shrink-0">
       <InputNumber
@@ -17,7 +18,7 @@
       />
     </div>
     <div class="flex flex-col items-end flex-shrink-0 w-24">
-      <span class="text-sm text-gray-600">KES {{ formatPrice(item.price) }}</span>
+      
       <span class="font-semibold text-gray-900">KES {{ formatPrice(lineTotal) }}</span>
     </div>
     <Button

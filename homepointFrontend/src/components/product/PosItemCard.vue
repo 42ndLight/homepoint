@@ -10,7 +10,7 @@
     @click="handleAdd"
   >
     <!-- Image -->
-    <div class="relative h-32 sm:h-36 md:h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+    <div class="relative aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">
       <img
         v-if="item.image"
         :src="item.image"
@@ -118,21 +118,22 @@ const isLowStock = computed(() => {
 })
 
 const stockLabel    = computed(() => {
-  if (isOutOfStock.value ) return 'Out of Stock'
-  if (isOutOfStock.value ) return 'Low Stock'
-    return 'In Stock' 
+  if (isOutOfStock.value) return 'Out of Stock'
+  if (isLowStock.value) return 'Low Stock'
+  return 'In Stock'
 })
 
 const stockSeverity = computed(() => {
   if (isOutOfStock.value) return 'danger'
   if (isLowStock.value) return 'warn'
-    return 'success'
+  return 'success'
 })
 
 const stockTextClass = computed(() => { 
   if (isOutOfStock.value) return 'text-red-600'
   if (isLowStock.value) return 'text-orange-600 font-bold'
-    return'text-green-700'})
+  return 'text-green-700'
+})
 
 const handleAdd = () => {
   if (!isOutOfStock.value) emit('add-to-cart', props.item)

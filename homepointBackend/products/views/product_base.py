@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.core.cache import cache
 
 from users.permissions import IsWarehouseStaff
+from products.serializers import get_user_role
 
 class BaseProductViewSet(viewsets.GenericViewSet):
     """
