@@ -14,6 +14,7 @@ class ImageOptimizationMixin(models.Model):
     
     # Store the initial unoptimized file link (either external or raw S3 upload)
     raw_external_url = models.URLField(max_length=1000)
+    raw_storage_key = models.CharField(max_length=1000, blank=True, null=True)
     # The final optimized webp asset delivered through CloudFront
     optimized_url = models.URLField(max_length=1000, blank=True, null=True)
     

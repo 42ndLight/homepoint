@@ -72,6 +72,7 @@ class ImageUploadView(UploadPipelineMixin, APIView):
                 create_kwargs = {
                     fk_field: target_id,
                     'raw_external_url': raw_url,
+                    'raw_storage_key': saved_path,
                     'optimization_status': 'pending'
                 }
                 img_obj = ImageModel.objects.create(**create_kwargs)

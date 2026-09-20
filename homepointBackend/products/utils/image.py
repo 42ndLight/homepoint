@@ -12,9 +12,12 @@ from django.core.exceptions import SuspiciousFileOperation
 
 
 def _load_url_image(url):
-    response = requests.get(url, timeout=15)
-    response.raise_for_status()
-    return io.BytesIO(response.content)
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+        return io.BytesIO(response.content)
+    except requests.RequestException:
+        return None
 
 
 def _resolve_local_path(source):
@@ -41,7 +44,9 @@ def _load_image_bytes(source):
     if isinstance(source, str):
         # 1. Check HTTP/HTTPS URLs first
         if source.startswith(("http://", "https://")):
-            return _load_url_image(source)
+            result = _load_url_image(source)
+            if result:
+                return result
 
         # 2. Check default_storage (S3/Tigris Bucket)
         try:

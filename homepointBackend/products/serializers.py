@@ -35,15 +35,35 @@ class InventorySerializer(serializers.ModelSerializer):
         read_only_fields = ['quantity', 'is_low_stock', 'last_updated']  #Customers only read
 
 class ProductImageSerializer(serializers.ModelSerializer):
+    optimized_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
         fields = '__all__'
 
+    def get_optimized_url(self, obj):
+        if obj.local_image and obj.local_image.name:
+            try:
+                return obj.local_image.url
+            except Exception:
+                pass
+        return obj.optimized_url or obj.raw_external_url
+
 
 class VariantImageSerializer(serializers.ModelSerializer):
+    optimized_url = serializers.SerializerMethodField()
+
     class Meta:
         model = VariantImage
         fields = '__all__'
+
+    def get_optimized_url(self, obj):
+        if obj.local_image and obj.local_image.name:
+            try:
+                return obj.local_image.url
+            except Exception:
+                pass
+        return obj.optimized_url or obj.raw_external_url
 
 class VariantSerializer(serializers.ModelSerializer):
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
