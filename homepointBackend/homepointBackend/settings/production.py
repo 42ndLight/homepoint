@@ -92,42 +92,26 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 USE_AWS = config('USE_AWS', default=False, cast=bool)
 
 if USE_AWS:
-    # AWS Authentication Keys
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
-    
-    # Optional: If using CloudFront to speed up asset delivery, add its URL here
-    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default=None)
-    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
-    CLOUDFRONT_DOMAIN = AWS_S3_CUSTOM_DOMAIN
-    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
+
+    # Base S3 Endpoint URL (e.g., https://storage.c-6.eu-central-1.aws.neon.tech)
+    AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL')
+    AWS_S3_ADDRESSING_STYLE = config('AWS_S3_ADDRESSING_STYLE', default='path')
     AWS_QUERYSTRING_AUTH = config('AWS_QUERYSTRING_AUTH', default=True, cast=bool)
-    
-    # S3 Performance Optimizations
-    AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400', # Tell browsers to cache static files for 1 day
-    }
-    AWS_DEFAULT_ACL = None # Rely on S3 bucket policies instead of ACLs
 
-    # Static files settings
-    STATIC_LOCATION = 'static'
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/{STATIC_LOCATION}/'
-    
-    # Media files settings
-    MEDIA_LOCATION = 'media'
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"}/{MEDIA_LOCATION}/'
-
+    # S3 Storage Options
     S3_OPTIONS = {
         "access_key": AWS_ACCESS_KEY_ID,
         "secret_key": AWS_SECRET_ACCESS_KEY,
         "bucket_name": AWS_STORAGE_BUCKET_NAME,
         "endpoint_url": AWS_S3_ENDPOINT_URL,
-        "signature_version": AWS_S3_SIGNATURE_VERSION,
+        "signature_version": "s3v4",
         "region_name": AWS_S3_REGION_NAME,
         "querystring_auth": AWS_QUERYSTRING_AUTH,
-        "addressing_style": "virtual",  # Critical for custom S3 compatibility
+        "addressing_style": AWS_S3_ADDRESSING_STYLE,  # Forces path-style addressing
     }
 
     STORAGES = {

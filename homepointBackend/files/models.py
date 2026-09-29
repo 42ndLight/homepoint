@@ -27,3 +27,14 @@ class ImportHistory(models.Model):
 
     def __str__(self):
         return f"{self.task_id} - {self.status}"
+
+class PendingUpload(models.Model):
+    record_id = models.UUIDField(unique=True, db_index=True)
+    storage_key = models.CharField(max_length=1000)
+    kind = models.CharField(max_length=50) # product_image | variant_image | xlsx_import
+    target_id = models.CharField(max_length=50, blank=True, null=True)
+    status = models.CharField(max_length=20, default='pending') # pending | uploaded | expired
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.kind} - {self.status}"

@@ -49,6 +49,8 @@ SHEET_MAPS = {
         "attributes": "attributes",
         "item code": "item_code",
         "low stock alert": "stock_threshold",
+        "qty": "quantity",
+        "quantity": "quantity",
     },
     "Inventory": {
         "variant id": "variant_id",
@@ -261,9 +263,15 @@ def convert(storage_key: str) -> dict:
             raise ValueError(f"Variant {vid}: 'sku' is required.")
 
         threshold = int(row.get("stock_threshold") or 10)
+        
+        var_qty = to_int(row.get("quantity"), "Variants.quantity") or 0
         inv = inv_lookup.get(
-            vid, {"quantity": 0, "location": "", "last_updated": "", "_qty": 0}
+            vid, {"quantity": var_qty, "location": "", "last_updated": "", "_qty": var_qty}
         )
+        if inv["quantity"] == 0 and var_qty > 0:
+            inv["quantity"] = var_qty
+            inv["_qty"] = var_qty
+
         inv["is_low_stock"] = inv["_qty"] < threshold
 
         variant = {
@@ -481,3 +489,56 @@ def scheduled_cleanup():
     """Example scheduled task - add your cleanup logic."""
     logger.info("Running scheduled cleanup")
     return {"cleaned": True}
+
+@shared_task
+def reconcile_stalled_uploads():
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import PendingUpload
+
+    cutoff = timezone.now() - timedelta(minutes=10)
+    stalled = PendingUpload.objects.filter(status='pending', created_at__lt=cutoff)
+    
+    expired_count = 0
+    promoted_count = 0
+    
+    for pending in stalled:
+        if default_storage.exists(pending.storage_key):
+            # Object landed, but confirm endpoint wasn't hit or failed.
+            # We will just mark it uploaded and enqueue it
+            pending.status = 'uploaded'
+            pending.save()
+            promoted_count += 1
+            
+            if pending.kind == "xlsx_import":
+                import uuid
+                task_id = str(uuid.uuid4())
+                from .models import ImportHistory
+                ImportHistory.objects.create(
+                    task_id=task_id,
+                    status='PENDING',
+                    file_path=pending.storage_key
+                )
+                process_xlsx_import_task.apply_async(args=[pending.storage_key], task_id=task_id)
+            else:
+                model_type = "product" if pending.kind == "product_image" else "variant"
+                from products.models import ProductImage, VariantImage
+                from products.tasks import process_image_optimization_task
+                ImageModel = ProductImage if model_type == "product" else VariantImage
+                fk_field = "product_id" if model_type == "product" else "variant_id"
+                
+                raw_url = default_storage.url(pending.storage_key)
+                create_kwargs = {
+                    fk_field: pending.target_id,
+                    'raw_external_url': raw_url,
+                    'raw_storage_key': pending.storage_key,
+                    'optimization_status': 'pending'
+                }
+                img_obj = ImageModel.objects.create(**create_kwargs)
+                process_image_optimization_task.delay(img_obj.id, model_type=model_type)
+        else:
+            pending.status = 'expired'
+            pending.save()
+            expired_count += 1
+            
+    return {"expired": expired_count, "promoted": promoted_count}
