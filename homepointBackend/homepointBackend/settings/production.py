@@ -92,21 +92,20 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 USE_AWS = config('USE_AWS', default=False, cast=bool)
 
 if USE_AWS:
-    STATIC_LOCATION = 'static'
-    STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/{STATIC_LOCATION}/'
-
-    MEDIA_LOCATION = 'media'
-    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/{MEDIA_LOCATION}/'
-    
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
 
-    # Base S3 Endpoint URL (e.g., https://storage.c-6.eu-central-1.aws.neon.tech)
     AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL')
     AWS_S3_ADDRESSING_STYLE = config('AWS_S3_ADDRESSING_STYLE', default='path')
     AWS_QUERYSTRING_AUTH = config('AWS_QUERYSTRING_AUTH', default=True, cast=bool)
+
+    STATIC_LOCATION = 'static'
+    STATIC_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/{STATIC_LOCATION}/'
+
+    MEDIA_LOCATION = 'media'
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/{MEDIA_LOCATION}/'
 
     # S3 Storage Options
     S3_OPTIONS = {
@@ -117,7 +116,7 @@ if USE_AWS:
         "signature_version": "s3v4",
         "region_name": AWS_S3_REGION_NAME,
         "querystring_auth": AWS_QUERYSTRING_AUTH,
-        "addressing_style": AWS_S3_ADDRESSING_STYLE,  # Forces path-style addressing
+        "addressing_style": AWS_S3_ADDRESSING_STYLE,
     }
 
     STORAGES = {
