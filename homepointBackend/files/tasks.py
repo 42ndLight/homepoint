@@ -464,8 +464,9 @@ def process_xlsx_import_task(self, file_path):
         return "done"
 
     except Exception as exc:
+        logger.exception("XLSX import task failed for task_id=%s", self.request.id)
         history.status = "FAILED"
-        history.error_msg = str(exc)
+        history.error_msg = "Import failed due to an internal error."
         history.save()
         raise
 

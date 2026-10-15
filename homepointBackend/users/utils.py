@@ -158,7 +158,6 @@ def send_at_sms(
                     if not provider_message_id:
                         logger.warning(
                             "AT SMS response for %s did not include a provider message ID",
-                            phone_number,
                         )
                         continue
 
@@ -176,14 +175,14 @@ def send_at_sms(
                         logger.exception(
                             "Unable to persist AT SMS notification %s", provider_message_id
                         )
-            logger.info(f"SMS sent successfully to {phone_number}")
+            logger.info(f"SMS sent successfully")
             return True
         else:
-            logger.warning(f"SMS failed for {phone_number}: {data}")
+            logger.warning("Sending SMS failed (intent=%s); provider returned unsuccessful status", intent)
             return False
             
     except requests.RequestException as exc:
-        logger.exception(f"AT SMS API request failed for {phone_number}: {exc}")
+        logger.exception("AT SMS API request failed: (intent=%s): %s", intent, exc)
         return False
 
 
@@ -221,7 +220,7 @@ def generate_and_send_otp(identifier, intent, cooldown_seconds=None, channel=Non
     if cooldown_seconds:
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
-    print(f"{clean_id} : {otp}")
+    #print(f"{clean_id} : {otp}")
     logger.info("Generated OTP (intent=%s, channel=%s)", intent, channel)
 
     if channel == 'email':

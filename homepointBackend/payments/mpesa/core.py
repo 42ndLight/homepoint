@@ -64,7 +64,7 @@ class MpesaExpressClient:
         proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
         try:
-            logger.info(f"Initiating STK Push for Order #{order_id} to {formatted_phone}")
+            logger.info(f"Initiating STK Push for Order #{order_id}")
             response = requests.post(url, json=payload, headers=headers, proxies=proxies, timeout=10)
             return response
         except requests.exceptions.RequestException as e:

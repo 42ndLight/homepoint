@@ -133,8 +133,8 @@ def check_order_payment_status(request, order_id):
         }, status=status.HTTP_200_OK)
         
     except Exception as e:
-        logger.error(f"Error checking payment status for order {order_id}: {str(e)}")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.exception(f"Error checking payment status for order {order_id}")
+        return Response({"error": "An internal error occurred. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 @require_POST

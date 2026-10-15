@@ -174,13 +174,13 @@ class PasswordResetRequestView(APIView):
                 "retry_after": exc.remaining_seconds,
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except Exception as exc:
-            logger.exception(f"Failed to send password reset OTP via {channel} to {identifier}: {exc}")
+            logger.exception("Failed to send password reset OTP", exc)
             return Response({
                 "error": f"Failed to send verification code via {channel}. Please try again later."
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         masked_recipient = mask_identifier(identifier, channel)
-        logger.info(f"Password reset OTP initiated for {identifier} via {channel}")
+        logger.info(f"Password reset OTP initiated ")
         return Response({
             "message": f"Password reset OTP sent via {channel.upper()}.",
             "channel": channel,
@@ -214,7 +214,7 @@ class PasswordResetVerifyOTPView(APIView):
         cache.delete(cache_key)
 
         reset_token = create_reset_grant(identifier)
-        logger.info(f"Password reset OTP verified for identifier: {identifier}")
+        logger.info(f"Password reset OTP verified")
         return Response({
             "message": "OTP verified. You may now set a new password.",
             "reset_token": reset_token,
@@ -261,7 +261,7 @@ class PasswordResetConfirmView(APIView):
             cache.delete(get_otp_cooldown_key('reset', user.email))
         delete_reset_grant(reset_token)
 
-        logger.info(f"User {user.username} successfully reset password via OTP.")
+        logger.info(f"Password reset completed successfully via OTP")
         return Response({"message": "Password updated successfully."})
 
 class UserProfileView(generics.RetrieveAPIView):

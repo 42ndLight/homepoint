@@ -126,6 +126,6 @@ class PaystackVerifyView(APIView):
             return Response(response, status=status.HTTP_200_OK)
         else:
             return Response(
-                {"error": response.get('message', 'Failed to verify transaction')},
+                {"error":"Failed to verify transaction"},
                 status=status.HTTP_400_BAD_REQUEST
             )

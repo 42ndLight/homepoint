@@ -140,7 +140,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 mpesa_receipt=mpesa_receipt_number,
             )
         except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail":"Unable to complete M-Pesa payment with the provided details."}, status=status.HTTP_400_BAD_REQUEST)
 
         order.refresh_from_db()
         response_serializer = OrderDetailSerializer(order)
