@@ -88,7 +88,7 @@ class PaystackClient:
                         response.status_code,
                         response.text,
                     )
-                    return {"status": False, "message": "Unable to initialize transaction at this time."}
+                return {"status": False, "message": "Unable to initialize transaction at this time."}
             else:
                 logger.error(f"Paystack init failed: {data.get('message')}")
                 return {"status": False, "message": data.get('message')}
