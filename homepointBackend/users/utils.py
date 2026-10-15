@@ -222,7 +222,7 @@ def generate_and_send_otp(identifier, intent, cooldown_seconds=None, channel=Non
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
     print(f"{clean_id} : {otp}")
-    logger.info(f"Generated OTP for {clean_id} (intent={intent}, channel={channel})")
+    logger.info("Generated OTP (intent=%s, channel=%s)", intent, channel)
 
     if channel == 'email':
         from common.services.email import email_service
@@ -233,7 +233,7 @@ def generate_and_send_otp(identifier, intent, cooldown_seconds=None, channel=Non
             valid_minutes=ttl // 60,
         )
         if not success:
-            logger.error("Failed to send OTP email to %s: %s", clean_id, response)
+            logger.error("Failed to send OTP email (intent=%s, channel=%s)", intent, channel)
             cache.delete(cache_key)
             if cooldown_seconds:
                 cache.delete(cooldown_key)

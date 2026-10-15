@@ -118,9 +118,9 @@ class ResendEmailService:
             # Local development or test fallback when RESEND_API_KEY is not configured
             if not self.api_key:
                 logger.info(
-                    "RESEND_API_KEY is not configured. Sending email via Django EMAIL_BACKEND fallback: %s -> %s",
+                    "RESEND_API_KEY is not configured. Sending email via Django EMAIL_BACKEND fallback: subject=%s recipient_count=%d",
                     subject,
-                    recipients
+                    len(recipients)
                 )
                 headers = {}
                 if reply_to_addr:
@@ -162,17 +162,27 @@ class ResendEmailService:
                 params["tags"] = tags
 
             response = resend.Emails.send(params)
-            logger.info("Email sent successfully via Resend to %s (id: %s)", recipients, response.get('id'))
+            logger.info(
+                 "Email sent successfully via Resend (recipient_count=%d, id: %s)",
+                 len(recipients),
+                 response.get('id'),
+             )
             return True, response
 
         except ResendError as exc:
-            error_msg = f"Resend API error sending email to {to_email}: {exc}"
-            logger.error(error_msg, exc_info=True)
+            logger.error(
+                "Resend API error while sending email (recipient_count=%d)",
+                len(recipients) if 'recipients' in locals() else 0,
+                exc_info=True,
+            )
             return False, str(exc)
 
         except Exception as exc:
-            error_msg = f"Failed to send email to {to_email}: {exc}"
-            logger.error(error_msg, exc_info=True)
+            logger.error(
+                "Failed to send email (recipient_count=%d)",
+                len(recipients) if 'recipients' in locals() else 0,
+                exc_info=True,
+            )
             return False, str(exc)
 
     def send_template_email(
