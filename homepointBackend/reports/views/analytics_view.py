@@ -9,7 +9,7 @@ from reports.models import DailySalesSnapshot
 from reports.services.analytics_service import AnalyticsService
 from reports.services.period_statement_generator import PeriodGenerator
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 class AnalyticsView(APIView):
     """
