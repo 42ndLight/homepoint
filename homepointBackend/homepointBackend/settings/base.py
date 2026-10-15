@@ -35,6 +35,12 @@ AT_API_KEY = os.getenv('AT_API_KEY')
 # Optional registered Africa's Talking sender ID/short code shown to recipients.
 AT_SENDER_ID = os.getenv('AT_SENDER_ID')
 
+# Email Service Configuration (Resend + Fallback)
+RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Homepoint <notifications@betasys.co.ke>')
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@betasys.co.ke')
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -44,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'common',
     'orders',
     'payments',
     'users',
@@ -78,7 +85,7 @@ ROOT_URLCONF = 'homepointBackend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

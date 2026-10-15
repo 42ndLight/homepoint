@@ -1,0 +1,13 @@
+{{ title }}
+
+Hello {{ name }},
+
+{{ message }}
+
+{% if action_url and action_text %}
+Action: {{ action_text }} ({{ action_url }})
+{% endif %}
+
+If you have questions regarding this notice, please contact {{ support_email }}.
+
+(c) {{ current_year }} Homepoint Technologies. All rights reserved.

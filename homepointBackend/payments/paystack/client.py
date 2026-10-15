@@ -72,25 +72,30 @@ class PaystackClient:
             # logger.debug(f"Paystack response: {response.text}")
             
             if response.status_code >= 400:
-                return {"status": False, "message": response.text}
+                logger.error(
+                    "Paystack verify returned HTTP %s for reference %s: %s",
+                    response.status_code,
+                    reference,
+                    response.text
+                )
+                return {"status": False, "message": "Unable to verify transaction at this time."}
                 
             data = response.json()
             
             if data.get("status"):
-                return {
-                    "status": True,
-                    "authorization_url": data["data"]["authorization_url"],
-                    "access_code": data["data"]["access_code"],
-                    "reference": data["data"]["reference"],
-                }
+                logger.error(
+                        "Paystack initialize returned HTTP %s: %s",
+                        response.status_code,
+                        response.text,
+                    )
+                    return {"status": False, "message": "Unable to initialize transaction at this time."}
             else:
                 logger.error(f"Paystack init failed: {data.get('message')}")
                 return {"status": False, "message": data.get('message')}
                 
         except requests.RequestException as e:
-            logger.exception(f"Paystack API error: {str(e)}")
-            return {"status": False, "message": str(e)}
-    
+            logger.exception("Paystack API error during initialize_transaction", exc_info=True)
+            return {"status": False, "message":  "Unable to initialize transaction at this time."}   
 
 
     def verify_transaction(self, reference: str) -> Dict:
@@ -135,7 +140,7 @@ class PaystackClient:
                 
         except requests.RequestException as e:
             logger.exception(f"Paystack verify error: {str(e)}")
-            return {"status": False, "message": str(e)}
+            return {"status": False, "message": "Unable to verify transaction at this time."}
     
         
     def validate_webhook(self, signature: str, payload: bytes) -> bool:

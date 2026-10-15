@@ -86,7 +86,10 @@ class ImageUploadView(UploadPipelineMixin, APIView):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).exception(f"Error uploading {uploaded_file.name}")
-                errors.append({"filename": uploaded_file.name, "error": str(e)})
+                errors.append({
+                        "filename": uploaded_file.name,
+                        "error": "Upload failed due to an internal error."
+                    })
         if not results:
             return Response({"error": "All uploads failed", "details": errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({

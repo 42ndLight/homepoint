@@ -2,13 +2,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-
+import logging
 from django.utils import timezone
 from datetime import datetime, timedelta, date
 from reports.models import DailySalesSnapshot
 from reports.services.analytics_service import AnalyticsService
 from reports.services.period_statement_generator import PeriodGenerator
 
+logger = logging.get_logger(__name__)
 
 class AnalyticsView(APIView):
     """
@@ -122,8 +123,9 @@ class AnalyticsView(APIView):
             })
 
         except Exception as e:
+            logger.exception("Unhandled error in AnalyticsView.get: %s", e)
             return Response(
-                {'error': str(e)},
+                {'error': 'An internal error occurred.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

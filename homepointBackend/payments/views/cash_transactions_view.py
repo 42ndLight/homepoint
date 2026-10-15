@@ -9,6 +9,9 @@ from django.db import transaction as db_transaction
 
 from users.permissions import IsWarehouseStaff
 from payments.serializers import CashRecordSerializer
+import logging
+
+logger = logging.get_logger(__name__)
 
 
 class CashTransactionCreateView(generics.ListCreateAPIView):
@@ -74,6 +77,8 @@ class CashTransactionCreateView(generics.ListCreateAPIView):
 
         except ValueError as e:
             # Catch 'Insufficient balance' errors from services
-            raise serializers.ValidationError({"detail": str(e)})
+            logger.exception("Cash transaction creation failed: %s", e)
+
+            raise serializers.ValidationError({"detail": "Unable to process this transaction."})
 
         serializer.instance = cash_transaction

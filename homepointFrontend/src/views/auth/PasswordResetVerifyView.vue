@@ -5,13 +5,17 @@
         <h2 class="text-2xl font-bold text-center">Verify Code</h2>
       </template>
       <template #subtitle>
-        <p class="text-center text-gray-500 mt-1">Enter the verification code sent to your phone</p>
+        <p class="text-center text-gray-500 mt-1">
+          Enter the verification code sent to your {{ resetStore.channel === 'email' ? 'email' : 'phone' }}
+        </p>
       </template>
 
       <template #content>
         <div class="mt-6 space-y-5">
           <p class="text-sm text-gray-600 text-center mb-4">
-            An OTP has been sent to {{ resetStore.maskedPhone }}
+            An OTP has been sent to
+            <strong class="font-medium text-gray-800">{{ resetStore.displayRecipient }}</strong>
+            via {{ resetStore.channel === 'email' ? 'Email' : 'SMS' }}
           </p>
           <div class="flex justify-center">
             <OTPInput :key="otpKey" @update:otp="handleOtpComplete" />
@@ -59,7 +63,7 @@ const router = useRouter()
 const resetStore = usePasswordResetStore()
 
 // Don't allow reaching this screen without having requested an OTP first.
-if (!resetStore.phoneNumber) {
+if (!resetStore.identifier && !resetStore.phoneNumber) {
   router.replace({ name: 'reset-password' })
 }
 
@@ -107,12 +111,13 @@ const handleVerifyOtp = async () => {
 
   loading.value = true
   errorMessage.value = ''
+  const currentIdentifier = resetStore.identifier || resetStore.phoneNumber
 
   try {
     const response = await fetch(`${config.API_BASE_URL}/users/auth/password-reset/verify-otp/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: resetStore.phoneNumber, otp: otp.value }),
+      body: JSON.stringify({ identifier: currentIdentifier, otp: otp.value }),
     })
 
     const data = await response.json().catch(() => null)
@@ -139,12 +144,13 @@ const handleResendOTP = async () => {
 
   resendLoading.value = true
   errorMessage.value = ''
+  const currentIdentifier = resetStore.identifier || resetStore.phoneNumber
 
   try {
     const response = await fetch(`${config.API_BASE_URL}/users/auth/password-reset/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: resetStore.phoneNumber }),
+      body: JSON.stringify({ identifier: currentIdentifier, channel: resetStore.channel }),
     })
 
     const data = await response.json().catch(() => null)

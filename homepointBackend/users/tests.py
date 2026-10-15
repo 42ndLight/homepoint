@@ -131,7 +131,8 @@ class StaffManagementTests(TestCase):
         response = self.client.get(reverse('staff_list'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([user['id'] for user in response.data], [self.staff.id])
+        staff_data = response.data.get('results') if isinstance(response.data, dict) else response.data
+        self.assertEqual([user['id'] for user in staff_data], [self.staff.id])
 
     def test_non_admin_cannot_list_or_delete_staff(self):
         self.client.force_authenticate(self.staff)
@@ -253,6 +254,16 @@ class SmsDeliveryReportCallbackTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(SmsNotification.objects.exists())
 
+    def test_malformed_callback_is_accepted(self):
+        with self.assertLogs('users.views', level='WARNING'):
+            response = self.post_callback({
+                'id': 'ATX-malformed',
+                'status': 'Delivered',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SmsNotification.objects.exists())
+
 
 class PurgeSmsNotificationsCommandTests(TestCase):
     def test_purges_notifications_older_than_ninety_days(self):
@@ -273,12 +284,95 @@ class PurgeSmsNotificationsCommandTests(TestCase):
         self.assertFalse(SmsNotification.objects.filter(pk=expired.pk).exists())
         self.assertTrue(SmsNotification.objects.filter(pk=retained.pk).exists())
 
-    def test_malformed_callback_is_accepted(self):
-        with self.assertLogs('users.views', level='WARNING'):
-            response = self.post_callback({
-                'id': 'ATX-malformed',
-                'status': 'Delivered',
-            })
 
+class PasswordResetDualChannelTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='dualuser',
+            email='dualuser@example.com',
+            phone_number='+254712999888',
+            password='InitialPassword123!',
+        )
+
+    def tearDown(self):
+        cache.clear()
+
+    @patch('users.utils.send_at_sms', return_value=True)
+    def test_password_reset_request_via_phone_number_success(self, mock_send_sms):
+        response = self.client.post(
+            reverse('password_reset_request'),
+            {'phone_number': '0712999888'},
+            format='json',
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(SmsNotification.objects.exists())
+        self.assertEqual(response.data.get('channel'), 'sms')
+        self.assertIn('recipient', response.data)
+        self.assertTrue(cache.get(get_otp_cache_key('reset', self.user.phone_number)))
+        mock_send_sms.assert_called_once()
+
+    @patch('common.services.email.email_service.send_password_reset_otp_email')
+    def test_password_reset_request_via_email_success(self, mock_send_email):
+        mock_send_email.return_value = (True, {'id': 're_email_test_123'})
+
+        response = self.client.post(
+            reverse('password_reset_request'),
+            {'identifier': 'dualuser@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data.get('channel'), 'email')
+        self.assertIn('recipient', response.data)
+        self.assertTrue(cache.get(get_otp_cache_key('reset', 'dualuser@example.com')))
+        mock_send_email.assert_called_once()
+        call_kwargs = mock_send_email.call_args[1]
+        self.assertEqual(call_kwargs['user'], self.user)
+        self.assertEqual(len(call_kwargs['otp']), 6)
+
+    def test_password_reset_request_unregistered_email_returns_error(self):
+        response = self.client.post(
+            reverse('password_reset_request'),
+            {'identifier': 'unregistered@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('identifier', response.data)
+
+    def test_password_reset_request_unregistered_phone_returns_error(self):
+        response = self.client.post(
+            reverse('password_reset_request'),
+            {'identifier': '0700000099'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('identifier', response.data)
+
+    def test_password_reset_verify_otp_with_email_success(self):
+        cache.set(get_otp_cache_key('reset', 'dualuser@example.com'), '123456', timeout=300)
+
+        response = self.client.post(
+            reverse('password_reset_verify_otp'),
+            {'identifier': 'dualuser@example.com', 'otp': '123456'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('reset_token', response.data)
+        # Verify OTP was consumed
+        self.assertIsNone(cache.get(get_otp_cache_key('reset', 'dualuser@example.com')))
+
+    def test_password_reset_confirm_with_email_grant_success(self):
+        from users.utils import create_reset_grant
+        reset_token = create_reset_grant('dualuser@example.com')
+
+        response = self.client.post(
+            reverse('password_reset_confirm'),
+            {
+                'reset_token': reset_token,
+                'new_password': 'BrandNewPassword123!',
+                'confirm_password': 'BrandNewPassword123!',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('BrandNewPassword123!'))
