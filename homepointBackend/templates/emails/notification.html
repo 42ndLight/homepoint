@@ -1,0 +1,35 @@
+{% extends "emails/base.html" %}
+
+{% block title %}{{ title }} - {{ app_name }}{% endblock %}
+
+{% block preheader %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #0f172a;">
+  {{ title }}
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 24px; color: #334155;">
+  Hello {{ name }},
+</p>
+
+<div style="margin: 0 0 24px 0; font-size: 15px; line-height: 24px; color: #334155;">
+  {{ message|linebreaksbr }}
+</div>
+
+{% if action_url and action_text %}
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
+  <tr>
+    <td align="center">
+      <a href="{{ action_url }}" class="btn btn-primary" style="display: inline-block; padding: 12px 28px; background-color: #2563eb; color: #ffffff; font-weight: 600; font-size: 14px; border-radius: 6px; text-decoration: none;">
+        {{ action_text }} &rarr;
+      </a>
+    </td>
+  </tr>
+</table>
+{% endif %}
+
+<p style="margin: 24px 0 0 0; font-size: 13px; line-height: 20px; color: #64748b;">
+  If you have questions regarding this notice, please contact <a href="mailto:{{ support_email }}" style="color: #2563eb;">{{ support_email }}</a>.
+</p>
+{% endblock %}

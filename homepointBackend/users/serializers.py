@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from django.core.validators import RegexValidator 
+from django.core.validators import RegexValidator, validate_email 
 User = get_user_model()
 
 
@@ -21,7 +21,7 @@ def normalize_ke_phone_number(value):
     return value
 
 
-class NewPasswordConfirmMixin:
+class NewPasswordConfirmMixin(serializers.Serializer):
     """
     Shared new_password/confirm_password fields + match validation, reused by
     both the authenticated change-password flow and the OTP-verified reset flow.
@@ -90,29 +90,111 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class PasswordResetSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(required=True) 
+    # All three accepted as plain CharField — type detection and format
+    # validation happen inside validate() based on whether the value contains '@'.
+    identifier = serializers.CharField(required=False, allow_blank=False)
+    phone_number = serializers.CharField(required=False, allow_blank=False)
+    # Use CharField (not EmailField) so DRF doesn't reject a phone number
+    # that the frontend sends in this slot for backward-compat reasons.
+    email = serializers.CharField(required=False, allow_blank=False)
 
-    def validate_phone_number(self, value):
-        value = normalize_ke_phone_number(value)
+    def validate(self, data):
+        raw_val = data.get('identifier') or data.get('phone_number') or data.get('email')
+        if not raw_val or not str(raw_val).strip():
+            raise serializers.ValidationError({"identifier": "Please enter your registered phone number or email."})
 
-        if not User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("Phone number is not registered.")
+        val = str(raw_val).strip()
 
-        return value
+        if '@' in val:
+            try:
+                validate_email(val)
+            except Exception:
+                raise serializers.ValidationError({"identifier": "Invalid email address format."})
+
+            val_lower = val.lower()
+            user = User.objects.filter(email__iexact=val_lower).first()
+            if not user:
+                raise serializers.ValidationError({"identifier": "No account found with this email address."})
+
+            data['channel'] = 'email'
+            data['identifier'] = user.email
+            data['user'] = user
+            data['phone_number'] = user.phone_number
+            data['email'] = user.email
+        else:
+            try:
+                normalized_phone = normalize_ke_phone_number(val)
+            except serializers.ValidationError as exc:
+                msg = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+                raise serializers.ValidationError({"identifier": msg})
+
+            user = User.objects.filter(phone_number=normalized_phone).first()
+            if not user:
+                raise serializers.ValidationError({"identifier": "No account found with this phone number."})
+
+            data['channel'] = 'sms'
+            data['identifier'] = user.phone_number
+            data['user'] = user
+            data['phone_number'] = user.phone_number
+            data['email'] = user.email
+
+        return data
 
 
 class PasswordResetVerifySerializer(serializers.Serializer):
     """Verifies the OTP only — never touches the password."""
-    phone_number = serializers.CharField(required=True)
+    identifier = serializers.CharField(required=False, allow_blank=False)
+    phone_number = serializers.CharField(required=False, allow_blank=False)
+    # CharField (not EmailField) — same reason as PasswordResetSerializer above.
+    email = serializers.CharField(required=False, allow_blank=False)
     otp = serializers.CharField(required=True)
 
-    def validate_phone_number(self, value):
-        value = normalize_ke_phone_number(value)
+    def validate(self, data):
+        raw_val = data.get('identifier') or data.get('phone_number') or data.get('email')
+        if not raw_val or not str(raw_val).strip():
+            raise serializers.ValidationError({"identifier": "Identifier (phone number or email) is required."})
 
-        if not User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("Phone number is not registered.")
+        val = str(raw_val).strip()
 
-        return value
+        if '@' in val:
+            try:
+                validate_email(val)
+            except Exception:
+                raise serializers.ValidationError({"identifier": "Invalid email address format."})
+
+            val_lower = val.lower()
+            user = User.objects.filter(email__iexact=val_lower).first()
+            if not user:
+                raise serializers.ValidationError({"identifier": "No account found with this email address."})
+
+            data['channel'] = 'email'
+            data['identifier'] = user.email
+            data['user'] = user
+            data['phone_number'] = user.phone_number
+            data['email'] = user.email
+        else:
+            try:
+                normalized_phone = normalize_ke_phone_number(val)
+            except serializers.ValidationError as exc:
+                msg = exc.detail[0] if isinstance(exc.detail, list) else exc.detail
+                raise serializers.ValidationError({"identifier": msg})
+
+            user = User.objects.filter(phone_number=normalized_phone).first()
+            if not user:
+                raise serializers.ValidationError({"identifier": "No account found with this phone number."})
+
+            data['channel'] = 'sms'
+            data['identifier'] = user.phone_number
+            data['user'] = user
+            data['phone_number'] = user.phone_number
+            data['email'] = user.email
+
+        otp_val = str(data.get('otp', '')).strip()
+        if not otp_val:
+            raise serializers.ValidationError({"otp": "Verification code is required."})
+        data['otp'] = otp_val
+
+        return data
 
 
 class PasswordResetConfirmSerializer(NewPasswordConfirmMixin, serializers.Serializer):

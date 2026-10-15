@@ -1,0 +1,39 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Welcome to {{ app_name }}{% endblock %}
+
+{% block preheader %}Welcome to Homepoint! Your account is ready.{% endblock %}
+
+{% block content %}
+<h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #0f172a;">
+  Welcome aboard, {{ name }}!
+</h1>
+
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 24px; color: #334155;">
+  Your account with <strong>Homepoint POS</strong> has been successfully set up. You can now access inventory tracking, catalog management, point-of-sale terminal, and operations reporting.
+</p>
+
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="width: 100%; margin: 24px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px;">
+  <tr>
+    <td style="font-size: 14px; line-height: 20px; color: #475569;">
+      <strong>Account Email:</strong> {{ email }}<br>
+      {% if role %}<strong>Assigned Role:</strong> {{ role }}<br>{% endif %}
+      <strong>Access Portal:</strong> {{ frontend_url }}
+    </td>
+  </tr>
+</table>
+
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
+  <tr>
+    <td align="center">
+      <a href="{{ frontend_url }}/login" class="btn btn-primary" style="display: inline-block; padding: 12px 28px; background-color: #2563eb; color: #ffffff; font-weight: 600; font-size: 14px; border-radius: 6px; text-decoration: none;">
+        Launch Dashboard &rarr;
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="margin: 0; font-size: 13px; line-height: 20px; color: #64748b;">
+  If you have any questions or require administrative assistance, please contact your store supervisor or email us at <a href="mailto:{{ support_email }}" style="color: #2563eb;">{{ support_email }}</a>.
+</p>
+{% endblock %}

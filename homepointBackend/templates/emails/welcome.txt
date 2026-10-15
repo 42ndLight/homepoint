@@ -1,0 +1,14 @@
+Welcome to Homepoint POS, {{ name }}!
+
+Your account with Homepoint POS has been successfully set up.
+
+Account Details:
+- Email: {{ email }}
+{% if role %}- Role: {{ role }}
+{% endif %}- Access Portal: {{ frontend_url }}
+
+To log in, visit: {{ frontend_url }}/login
+
+If you have any questions or require administrative assistance, contact us at {{ support_email }}.
+
+(c) {{ current_year }} Homepoint Technologies. All rights reserved.

@@ -29,36 +29,68 @@ class OTPCooldownError(Exception):
         super().__init__(f"OTP resend cooldown active: {remaining_seconds}s remaining")
 
 
-def get_otp_cache_key(intent, phone_number):
-    return f"{intent}_otp_{phone_number}"
+def get_otp_cache_key(intent, identifier):
+    clean_id = str(identifier).strip().lower()
+    return f"{intent}_otp_{clean_id}"
 
 
-def get_otp_cooldown_key(intent, phone_number):
-    return f"{intent}_otp_cooldown_{phone_number}"
+def get_otp_cooldown_key(intent, identifier):
+    clean_id = str(identifier).strip().lower()
+    return f"{intent}_otp_cooldown_{clean_id}"
 
 
 def get_reset_grant_key(token):
     return f"reset_grant_{token}"
 
 
-def create_reset_grant(phone_number):
+def create_reset_grant(identifier):
     """
-    Issues an opaque, single-use token that proves this phone number's OTP
-    was just verified. The token (not the phone number or OTP) is what the
-    frontend carries from the verify-OTP step to the set-new-password step.
+    Issues an opaque, single-use token that proves this user's OTP
+    was just verified. The token is what the frontend carries from the
+    verify-OTP step to the set-new-password step.
     """
     token = secrets.token_urlsafe(32)
-    cache.set(get_reset_grant_key(token), phone_number, timeout=RESET_GRANT_TTL)
+    cache.set(get_reset_grant_key(token), str(identifier).strip().lower(), timeout=RESET_GRANT_TTL)
     return token
 
 
 def get_reset_grant_phone(token):
-    """Returns the phone number tied to a still-valid reset grant, or None."""
+    """Returns the identifier tied to a still-valid reset grant, or None."""
     return cache.get(get_reset_grant_key(token))
+
+
+get_reset_grant_identifier = get_reset_grant_phone
 
 
 def delete_reset_grant(token):
     cache.delete(get_reset_grant_key(token))
+
+
+def mask_identifier(identifier: str, channel: str | None = None) -> str:
+    """
+    Returns a partially masked representation of an email or phone number.
+    E.g., 'john.doe@example.com' -> 'j***e@example.com'
+    '+254712345678' -> '*******678'
+    """
+    raw = str(identifier).strip()
+    if not raw:
+        return ''
+
+    is_email = (channel == 'email') or ('@' in raw)
+    if is_email:
+        parts = raw.split('@', 1)
+        local_part = parts[0]
+        domain_part = parts[1] if len(parts) > 1 else ''
+        if len(local_part) <= 2:
+            masked_local = local_part[0] + '*' if local_part else '*'
+        else:
+            masked_local = local_part[0] + ('*' * (len(local_part) - 2)) + local_part[-1]
+        return f"{masked_local}@{domain_part}" if domain_part else masked_local
+
+    visible_count = 3
+    if len(raw) <= visible_count:
+        return raw
+    return '*' * (len(raw) - visible_count) + raw[-visible_count:]
 
 
 def send_at_sms(
@@ -155,17 +187,23 @@ def send_at_sms(
         return False
 
 
-def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
+def generate_and_send_otp(identifier, intent, cooldown_seconds=None, channel=None, user=None):
     """
-    Generates a 6-digit OTP, caches it, and triggers Africa's Talking.
+    Generates a 6-digit OTP, caches it, and triggers Africa's Talking (SMS)
+    or Resend (Email).
     Intent can be 'login' or 'reset'.
 
     If cooldown_seconds is given, enforces a resend cooldown for this
-    phone_number/intent pair: raises OTPCooldownError (with the remaining
+    identifier/intent pair: raises OTPCooldownError (with the remaining
     wait time) instead of generating a new code when one was already sent
     within the cooldown window. The still-valid OTP is left untouched.
     """
-    cooldown_key = get_otp_cooldown_key(intent, phone_number)
+    raw_id = str(identifier).strip()
+    if not channel:
+        channel = 'email' if '@' in raw_id else 'sms'
+
+    clean_id = raw_id.lower() if channel == 'email' else raw_id
+    cooldown_key = get_otp_cooldown_key(intent, clean_id)
 
     if cooldown_seconds:
         cooldown_expiry = cache.get(cooldown_key)
@@ -175,7 +213,7 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
                 raise OTPCooldownError(remaining)
 
     otp = f"{secrets.randbelow(1_000_000):06d}"
-    cache_key = get_otp_cache_key(intent, phone_number)
+    cache_key = get_otp_cache_key(intent, clean_id)
     ttl = RESET_OTP_TTL if intent == 'reset' else 360
 
     cache.set(cache_key, otp, timeout=ttl)
@@ -183,11 +221,26 @@ def generate_and_send_otp(phone_number, intent, cooldown_seconds=None):
     if cooldown_seconds:
         cache.set(cooldown_key, time.time() + cooldown_seconds, timeout=cooldown_seconds)
 
-    print(f"{phone_number} : {otp}")
-    logger.info(f"Generated OTP for {phone_number} (intent={intent})")
+    print(f"{clean_id} : {otp}")
+    logger.info(f"Generated OTP for {clean_id} (intent={intent}, channel={channel})")
 
-    sender_id = getattr(settings, 'AT_SENDER_ID', None)
-    message = f"Your HomePoint code is {otp}. Valid for 6 minutes. Dont Share Code With AnyOne"
-    send_at_sms(phone_number, message, sender_id=sender_id, intent=intent)
-
-    return True
+    if channel == 'email':
+        from common.services.email import email_service
+        recipient_user = user or clean_id
+        success, response = email_service.send_password_reset_otp_email(
+            user=recipient_user,
+            otp=otp,
+            valid_minutes=ttl // 60,
+        )
+        if not success:
+            logger.error("Failed to send OTP email to %s: %s", clean_id, response)
+            cache.delete(cache_key)
+            if cooldown_seconds:
+                cache.delete(cooldown_key)
+            raise RuntimeError(f"Failed to send email verification code: {response}")
+        return True
+    else:
+        sender_id = getattr(settings, 'AT_SENDER_ID', None)
+        message = f"Your HomePoint code is {otp}. Valid for 6 minutes. Dont Share Code With AnyOne"
+        send_at_sms(clean_id, message, sender_id=sender_id, intent=intent)
+        return True
